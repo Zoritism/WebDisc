@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.zoritism.webdisc.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "webdisc.refmap.json",
+  "mixins": [
+    "MixinSoundBufferLibrary",
+    "MixinJukeboxBlockEntity"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
