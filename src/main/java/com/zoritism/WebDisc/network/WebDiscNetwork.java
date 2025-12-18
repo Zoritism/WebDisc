@@ -1,9 +1,11 @@
 package com.zoritism.webdisc.network;
 
 import com.zoritism.webdisc.WebDiscMod;
+import com.zoritism.webdisc.network.message.FinalizeRecordMessage;
 import com.zoritism.webdisc.network.message.OpenUrlMenuMessage;
 import com.zoritism.webdisc.network.message.PlayWebDiscMessage;
 import com.zoritism.webdisc.network.message.SetUrlMessage;
+import com.zoritism.webdisc.network.message.StartRecordMessage;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -46,6 +48,20 @@ public final class WebDiscNetwork {
                 SetUrlMessage::encode,
                 SetUrlMessage::decode,
                 SetUrlMessage::handle
+        );
+        CHANNEL.registerMessage(
+                id++,
+                StartRecordMessage.class,
+                StartRecordMessage::encode,
+                StartRecordMessage::decode,
+                StartRecordMessage::handle
+        );
+        CHANNEL.registerMessage(
+                id++,
+                FinalizeRecordMessage.class,
+                FinalizeRecordMessage::encode,
+                FinalizeRecordMessage::decode,
+                FinalizeRecordMessage::handle
         );
     }
 

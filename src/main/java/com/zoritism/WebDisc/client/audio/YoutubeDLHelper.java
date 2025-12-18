@@ -25,7 +25,7 @@ public final class YoutubeDLHelper {
     private static Path baseDir() {
         Minecraft mc = Minecraft.getInstance();
         File root = mc != null ? mc.gameDirectory : new File(".");
-        return root.toPath().resolve("webdisc").resolve("youtubedl");
+        return root.toPath().resolve("WebDisc").resolve("youtubedl");
     }
 
     private static String resolveExecutableFileName() {

@@ -26,7 +26,8 @@ public final class FFmpegHelper {
     private static Path baseDir() {
         Minecraft mc = Minecraft.getInstance();
         File root = mc != null ? mc.gameDirectory : new File(".");
-        return root.toPath().resolve("webdisc").resolve("ffmpeg");
+        // Папка WebDisc/ffmpeg рядом с клиентом
+        return root.toPath().resolve("WebDisc").resolve("ffmpeg");
     }
 
     private static void ensureExecutable() throws Exception {
@@ -56,13 +57,17 @@ public final class FFmpegHelper {
             }
 
             URL src = null;
-            if (SystemUtils.IS_OS_MAC) {
-                src = new URL("https://evermeet.cx/ffmpeg/ffmpeg-6.1.zip");
-            } else if (SystemUtils.IS_OS_WINDOWS) {
+            if (SystemUtils.IS_OS_WINDOWS) {
                 src = new URL("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip");
+            } else if (SystemUtils.IS_OS_MAC) {
+                src = new URL("https://evermeet.cx/ffmpeg/ffmpeg-6.1.zip");
+            } else if (SystemUtils.IS_OS_LINUX) {
+                // Для Linux часто лучше ставить пакетами, но дадим опциональный бинарник
+                src = null; // не докачиваем автоматически, пусть юзер ставит через пакетный менеджер
             }
 
             if (src == null) {
+                logMissingInstructions();
                 return;
             }
 
@@ -103,12 +108,14 @@ public final class FFmpegHelper {
         if (SystemUtils.IS_OS_WINDOWS) {
             lines = new String[]{
                     "FFmpeg not found for WebDisc.",
-                    "Download from e.g. https://www.gyan.dev/ffmpeg/builds/ and place ffmpeg.exe into WebDisc/ffmpeg"
+                    "Either enable downloadFFmpeg in config or download from https://www.gyan.dev/ffmpeg/builds/",
+                    "and place ffmpeg.exe into WebDisc/ffmpeg"
             };
         } else if (SystemUtils.IS_OS_MAC) {
             lines = new String[]{
                     "FFmpeg not found for WebDisc.",
-                    "Download a macOS ffmpeg build and place the 'ffmpeg' binary into WebDisc/ffmpeg"
+                    "Either enable downloadFFmpeg in config or download a macOS ffmpeg build",
+                    "and place 'ffmpeg' into WebDisc/ffmpeg"
             };
         } else if (SystemUtils.IS_OS_LINUX) {
             lines = new String[]{

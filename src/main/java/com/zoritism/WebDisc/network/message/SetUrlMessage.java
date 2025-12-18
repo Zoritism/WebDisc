@@ -12,10 +12,20 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.net.URL;
 import java.util.function.Supplier;
 
+/**
+ * C2S: игрок нажал "Принять" в окне ввода URL.
+ * Сервер:
+ * - валидирует URL;
+ * - проверяет белый список;
+ * - пишет URL в NBT диска;
+ * - сбрасывает флаги finalized/durationTicks;
+ * - шлёт S2C StartRecordMessage только этому игроку.
+ */
 public record SetUrlMessage(String url) {
 
     public static void encode(SetUrlMessage msg, FriendlyByteBuf buf) {
@@ -29,9 +39,7 @@ public record SetUrlMessage(String url) {
     public static void handle(SetUrlMessage msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context c = ctx.get();
         c.enqueueWork(() -> {
-            if (!c.getDirection().getReceptionSide().isServer()) {
-                return;
-            }
+            if (!c.getDirection().getReceptionSide().isServer()) return;
             Player p = c.getSender();
             if (p == null) return;
 
@@ -69,10 +77,20 @@ public record SetUrlMessage(String url) {
                 return;
             }
 
-            p.playNotifySound(SoundEvents.VILLAGER_WORK_CARTOGRAPHER, SoundSource.BLOCKS, 1.0F, 1.0F);
+            // Записываем URL и сбрасываем статус записи
             CompoundTag tag = stack.getOrCreateTag();
             tag.putString(WebDiscMod.URL_NBT, u);
+            tag.putBoolean("webdisc:finalized", false);
+            tag.remove("webdisc:durationTicks");
             stack.setTag(tag);
+
+            p.playNotifySound(SoundEvents.VILLAGER_WORK_CARTOGRAPHER, SoundSource.BLOCKS, 1.0F, 1.0F);
+
+            // Шлём клиенту команду начать запись/загрузку
+            com.zoritism.webdisc.network.WebDiscNetwork.CHANNEL.send(
+                    PacketDistributor.PLAYER.with(() -> (net.minecraft.server.level.ServerPlayer) p),
+                    new StartRecordMessage(u)
+            );
         });
         c.setPacketHandled(true);
     }

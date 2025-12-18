@@ -23,45 +23,18 @@ import java.util.function.Supplier;
 
 public class WebDiscItem extends RecordItem {
 
-    private static final String TAG_RECORDED = "webdisc_recorded";
-    private static final String TAG_DURATION = "webdisc_durationTicks";
-
     public WebDiscItem(Properties properties, int comparatorOutput, Supplier<SoundEvent> sound, int lengthSeconds) {
         super(comparatorOutput, sound, properties, lengthSeconds);
-    }
-
-    public static boolean isRecorded(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return false;
-        CompoundTag tag = stack.getTag();
-        if (tag == null) return false;
-        return tag.getBoolean(TAG_RECORDED);
-    }
-
-    public static int getDurationTicks(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return 0;
-        CompoundTag tag = stack.getTag();
-        if (tag == null) return 0;
-        return Math.max(0, tag.getInt(TAG_DURATION));
-    }
-
-    public static void markRecorded(ItemStack stack, String url, int durationTicks) {
-        if (stack == null || stack.isEmpty()) return;
-        CompoundTag tag = stack.getOrCreateTag();
-        tag.putString(WebDiscMod.URL_NBT, url == null ? "" : url);
-        tag.putBoolean(TAG_RECORDED, true);
-        tag.putInt(TAG_DURATION, Math.max(0, durationTicks));
-        stack.setTag(tag);
     }
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (level.isClientSide) {
-            return InteractionResultHolder.success(stack);
-        }
 
-        if (isRecorded(stack)) {
-            return InteractionResultHolder.success(stack);
+        CompoundTag tag = stack.getTag();
+        boolean finalized = tag != null && tag.getBoolean("webdisc:finalized");
+        if (finalized) {
+            return InteractionResultHolder.pass(stack);
         }
 
         if (player instanceof ServerPlayer sp) {
@@ -78,22 +51,19 @@ public class WebDiscItem extends RecordItem {
         CompoundTag tag = stack.getTag();
         if (tag == null) tag = new CompoundTag();
         String url = tag.getString(WebDiscMod.URL_NBT);
-        boolean recorded = tag.getBoolean(TAG_RECORDED);
-        int duration = tag.getInt(TAG_DURATION);
-
         if (!url.isEmpty() && flag.isAdvanced()) {
             Component urlCmp = Component.literal(url).withStyle(ChatFormatting.BLUE);
             lines.add(Component.translatable("item.webdisc.web_disc.tooltip", urlCmp).withStyle(ChatFormatting.GRAY));
         }
-
-        if (recorded) {
-            double seconds = duration / 20.0;
-            lines.add(Component.literal("Записано, длительность: " + String.format("%.1f", seconds) + " c")
-                    .withStyle(ChatFormatting.GREEN));
-        } else {
-            lines.add(Component.literal("Пустой диск: ПКМ для записи URL").withStyle(ChatFormatting.YELLOW));
+        if (tag.getBoolean("webdisc:finalized")) {
+            int len = tag.getInt("webdisc:durationTicks");
+            if (len > 0) {
+                int seconds = len / 20;
+                lines.add(Component.translatable("item.webdisc.web_disc.recorded", seconds).withStyle(ChatFormatting.GREEN));
+            } else {
+                lines.add(Component.translatable("item.webdisc.web_disc.recorded", 0).withStyle(ChatFormatting.GREEN));
+            }
         }
-
         super.appendHoverText(stack, level, lines, flag);
     }
 
