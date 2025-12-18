@@ -10,6 +10,7 @@ displayURL="https://discord.gg/DMmTw9wm https://t.me/Zoritism"
 credits="by ${mod_authors}"
 authors="${mod_authors}"
 description="${mod_description}"
+mixinConfigs="webdisc.mixins.json"
 
 # Start of user code block mod configuration
 # End of user code block mod configuration

@@ -1,6 +1,7 @@
 package com.zoritism.webdisc.mixin;
 
 import com.zoritism.webdisc.WebDiscMod;
+import com.zoritism.webdisc.item.WebDiscItem;
 import com.zoritism.webdisc.network.WebDiscNetwork;
 import com.zoritism.webdisc.network.message.PlayWebDiscMessage;
 import com.zoritism.webdisc.registry.WebDiscRegistry;
@@ -29,22 +30,25 @@ public abstract class MixinJukeboxBlockEntity {
         ItemStack stack = self.getFirstItem();
         if (!stack.is(WebDiscRegistry.CUSTOM_RECORD.get())) return;
 
+        if (!WebDiscItem.isRecorded(stack)) {
+            WebDiscMod.LOGGER.info("[WebDisc][Jukebox] startPlaying: custom record not recorded, skip");
+            return;
+        }
+
         CompoundTag tag = stack.getTag();
         if (tag == null) tag = new CompoundTag();
         String url = tag.getString(WebDiscMod.URL_NBT);
-        if (url == null || url.isEmpty()) return;
-
-        boolean finalized = tag.getBoolean("webdisc:finalized");
-        int duration = tag.getInt("webdisc:durationTicks");
-        if (!finalized || duration <= 0) {
+        if (url == null || url.isEmpty()) {
+            WebDiscMod.LOGGER.info("[WebDisc][Jukebox] startPlaying: recorded disc has empty URL, skip");
             return;
         }
+
+        WebDiscMod.LOGGER.info("[WebDisc][Jukebox] startPlaying at {} with url={}", self.getBlockPos(), url);
 
         server.players().forEach(p -> {
             WebDiscNetwork.CHANNEL.send(
                     PacketDistributor.PLAYER.with(() -> (ServerPlayer) p),
-                    new PlayWebDiscMessage(self.getBlockPos(), url)
-            );
+                    new PlayWebDiscMessage(self.getBlockPos(), url));
         });
     }
 
@@ -54,11 +58,12 @@ public abstract class MixinJukeboxBlockEntity {
         Level level = self.getLevel();
         if (!(level instanceof ServerLevel server)) return;
 
+        WebDiscMod.LOGGER.info("[WebDisc][Jukebox] popOutRecord at {}", self.getBlockPos());
+
         server.players().forEach(p -> {
             WebDiscNetwork.CHANNEL.send(
                     PacketDistributor.PLAYER.with(() -> (ServerPlayer) p),
-                    new PlayWebDiscMessage(self.getBlockPos(), "")
-            );
+                    new PlayWebDiscMessage(self.getBlockPos(), ""));
         });
     }
 
@@ -69,11 +74,12 @@ public abstract class MixinJukeboxBlockEntity {
         if (!(level instanceof ServerLevel server)) return;
         if (!self.getFirstItem().isEmpty()) return;
 
+        WebDiscMod.LOGGER.info("[WebDisc][Jukebox] removeItem cleared jukebox at {}", self.getBlockPos());
+
         server.players().forEach(p -> {
             WebDiscNetwork.CHANNEL.send(
                     PacketDistributor.PLAYER.with(() -> (ServerPlayer) p),
-                    new PlayWebDiscMessage(self.getBlockPos(), "")
-            );
+                    new PlayWebDiscMessage(self.getBlockPos(), ""));
         });
     }
 }

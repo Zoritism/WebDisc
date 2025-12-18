@@ -1,5 +1,6 @@
 package com.zoritism.webdisc.network.message;
 
+import com.zoritism.webdisc.WebDiscMod;
 import com.zoritism.webdisc.client.WebDiscClientHandler;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
@@ -20,7 +21,6 @@ public record PlayWebDiscMessage(BlockPos pos, String url, UUID uuid, int entity
         buf.writeBlockPos(msg.pos);
         buf.writeUtf(msg.url);
         buf.writeUUID(msg.uuid);
-
         buf.writeInt(msg.entityId);
     }
 
@@ -38,6 +38,8 @@ public record PlayWebDiscMessage(BlockPos pos, String url, UUID uuid, int entity
         c.enqueueWork(() -> {
             if (!c.getDirection().getReceptionSide().isClient()) return;
             Vec3 center = msg.pos().getCenter();
+            WebDiscMod.LOGGER.info("[WebDisc][Client] PlayWebDiscMessage at {} url='{}' uuid={} entityId={}",
+                    msg.pos(), msg.url(), msg.uuid(), msg.entityId());
             WebDiscClientHandler.play(center, msg.url(), msg.uuid(), msg.entityId());
         });
         c.setPacketHandled(true);

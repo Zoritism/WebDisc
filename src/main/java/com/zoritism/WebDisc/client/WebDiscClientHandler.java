@@ -1,5 +1,6 @@
 package com.zoritism.webdisc.client;
 
+import com.zoritism.webdisc.WebDiscMod;
 import com.zoritism.webdisc.client.audio.AudioHandlerClient;
 import com.zoritism.webdisc.client.audio.sound.WebEntityBoundSound;
 import com.zoritism.webdisc.client.audio.sound.WebFileSound;
@@ -43,18 +44,25 @@ public final class WebDiscClientHandler {
         }
 
         if (url == null || url.isEmpty()) {
+            WebDiscMod.LOGGER.info("[WebDisc][Client] play(): empty URL at {}, stop only", center);
             return;
         }
 
         AudioHandlerClient handler = new AudioHandlerClient();
-        if (!handler.hasOgg(url)) {
+        boolean has = handler.hasOgg(url);
+        WebDiscMod.LOGGER.info("[WebDisc][Client] play(): center={}, url='{}', uuid={}, entityId={}, hasOgg={}",
+                center, url, uuid, entityId, has);
+
+        if (!has) {
             mc.player.sendSystemMessage(Component.translatable("webdisc.song.downloading"));
             handler.downloadAsOgg(url).thenAccept(success -> {
                 if (!success) {
                     mc.player.sendSystemMessage(Component.translatable("webdisc.song.failed"));
+                    WebDiscMod.LOGGER.info("[WebDisc][Client] play(): download failed for url='{}'", url);
                     return;
                 }
                 mc.player.sendSystemMessage(Component.translatable("webdisc.song.ready"));
+                WebDiscMod.LOGGER.info("[WebDisc][Client] play(): download ok, creating sound for url='{}'", url);
 
                 WebFileSound fs = entityBound
                         ? new WebEntityBoundSound(url, entity)
@@ -79,6 +87,7 @@ public final class WebDiscClientHandler {
         } else {
             soundsByPos.put(center, fs);
         }
+        WebDiscMod.LOGGER.info("[WebDisc][Client] play(): playing existing ogg for url='{}' at {}", url, center);
         mc.getSoundManager().play(fs);
     }
 }
