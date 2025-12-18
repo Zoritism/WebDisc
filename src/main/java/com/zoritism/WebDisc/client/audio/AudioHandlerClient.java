@@ -63,6 +63,23 @@ public class AudioHandlerClient {
                         "-loglevel", "0",
                         oggOut.getAbsolutePath()
                 );
+
+                // Чистим временный файл без .ogg, если он существует
+                try {
+                    if (inPath != null && !inPath.isEmpty()) {
+                        File tmp = new File(inPath);
+                        if (tmp.exists() && tmp.isFile()) {
+                            // удаляем только если он в той же папке, что и oggOut (безопаснее)
+                            if (tmp.getParentFile() != null
+                                    && oggOut.getParentFile() != null
+                                    && tmp.getParentFile().getCanonicalPath().equals(oggOut.getParentFile().getCanonicalPath())) {
+                                //noinspection ResultOfMethodCallIgnored
+                                tmp.delete();
+                            }
+                        }
+                    }
+                } catch (Throwable ignored) {}
+
                 return true;
             } catch (Exception e) {
                 WebDiscMod.LOGGER.info("[WebDisc] Audio download/transcode failed: {}", e.toString());
