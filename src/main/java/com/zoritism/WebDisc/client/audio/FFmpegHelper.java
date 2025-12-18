@@ -4,7 +4,6 @@ import com.zoritism.webdisc.WebDiscMod;
 import com.zoritism.webdisc.config.WebDiscConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Util;
 import org.apache.commons.lang3.SystemUtils;
 
 import java.io.BufferedReader;
@@ -27,7 +26,7 @@ public final class FFmpegHelper {
     private static Path baseDir() {
         Minecraft mc = Minecraft.getInstance();
         File root = mc != null ? mc.gameDirectory : new File(".");
-        return root.toPath().resolve("WebDisc").resolve("ffmpeg");
+        return root.toPath().resolve("webdisc").resolve("ffmpeg");
     }
 
     private static void ensureExecutable() throws Exception {
@@ -120,7 +119,7 @@ public final class FFmpegHelper {
             lines = new String[]{"FFmpeg not found for WebDisc."};
         }
         for (String s : lines) {
-            WebDiscMod.logger.info("[WebDisc] {}", s);
+            WebDiscMod.LOGGER.info("[WebDisc] {}", s);
         }
     }
 
@@ -134,7 +133,7 @@ public final class FFmpegHelper {
         cmd.add(ffmpegPath);
         Collections.addAll(cmd, args);
 
-        WebDiscMod.logger.info("[WebDisc] ffmpeg: {}", String.join(" ", cmd));
+        WebDiscMod.LOGGER.info("[WebDisc] ffmpeg: {}", String.join(" ", cmd));
 
         Process proc;
         if (SystemUtils.IS_OS_LINUX) {
@@ -152,7 +151,7 @@ public final class FFmpegHelper {
                 while ((line = err.readLine()) != null) {
                     sb.append(line).append('\n');
                 }
-                WebDiscMod.logger.info("[WebDisc] ffmpeg stderr: {}", sb.toString());
+                WebDiscMod.LOGGER.info("[WebDisc] ffmpeg stderr: {}", sb.toString());
             }
             throw new RuntimeException("ffmpeg exited with code " + code);
         }

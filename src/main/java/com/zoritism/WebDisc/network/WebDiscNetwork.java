@@ -28,10 +28,10 @@ public final class WebDiscNetwork {
     public static void init() {
         CHANNEL.registerMessage(
                 id++,
-                OpenDiscUrlScreenMessage.class,
-                OpenDiscUrlScreenMessage::encode,
-                OpenDiscUrlScreenMessage::decode,
-                OpenDiscUrlScreenMessage::handle
+                OpenUrlMenuMessage.class,
+                OpenUrlMenuMessage::encode,
+                OpenUrlMenuMessage::decode,
+                OpenUrlMenuMessage::handle
         );
         CHANNEL.registerMessage(
                 id++,
@@ -42,10 +42,10 @@ public final class WebDiscNetwork {
         );
         CHANNEL.registerMessage(
                 id++,
-                SetDiscUrlMessage.class,
-                SetDiscUrlMessage::encode,
-                SetDiscUrlMessage::decode,
-                SetDiscUrlMessage::handle
+                SetUrlMessage.class,
+                SetUrlMessage::encode,
+                SetUrlMessage::decode,
+                SetUrlMessage::handle
         );
     }
 

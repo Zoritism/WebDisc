@@ -19,6 +19,10 @@ public final class WebDiscRegistry {
     public static final DeferredRegister<SoundEvent> SOUND_EVENTS =
             DeferredRegister.create(ForgeRegistries.SOUND_EVENTS, WebDiscMod.MOD_ID);
 
+    public static final RegistryObject<SoundEvent> PLACEHOLDER_SOUND =
+            SOUND_EVENTS.register("placeholder_sound",
+                    () -> SoundEvent.createVariableRangeEvent(WebDiscMod.id("placeholder_sound")));
+
     public static final RegistryObject<WebDiscItem> CUSTOM_RECORD =
             ITEMS.register("web_disc", () ->
                     new WebDiscItem(
@@ -28,8 +32,4 @@ public final class WebDiscRegistry {
                             1
                     )
             );
-
-    public static final RegistryObject<SoundEvent> PLACEHOLDER_SOUND =
-            SOUND_EVENTS.register("placeholder_sound",
-                    () -> SoundEvent.createVariableRangeEvent(WebDiscMod.id("placeholder_sound")));
 }

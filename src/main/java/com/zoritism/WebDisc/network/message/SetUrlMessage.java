@@ -18,18 +18,20 @@ import java.util.function.Supplier;
 
 public record SetUrlMessage(String url) {
 
-    public static void encode(SetDiscUrlMessage msg, FriendlyByteBuf buf) {
+    public static void encode(SetUrlMessage msg, FriendlyByteBuf buf) {
         buf.writeUtf(msg.url);
     }
 
-    public static SetDiscUrlMessage decode(FriendlyByteBuf buf) {
-        return new SetDiscUrlMessage(buf.readUtf());
+    public static SetUrlMessage decode(FriendlyByteBuf buf) {
+        return new SetUrlMessage(buf.readUtf());
     }
 
-    public static void handle(SetDiscUrlMessage msg, Supplier<NetworkEvent.Context> ctx) {
+    public static void handle(SetUrlMessage msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context c = ctx.get();
         c.enqueueWork(() -> {
-            if (!c.getDirection().getReceptionSide().isServer()) return;
+            if (!c.getDirection().getReceptionSide().isServer()) {
+                return;
+            }
             Player p = c.getSender();
             if (p == null) return;
 

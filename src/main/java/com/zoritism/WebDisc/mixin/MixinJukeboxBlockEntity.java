@@ -1,8 +1,9 @@
 package com.zoritism.webdisc.mixin;
 
 import com.zoritism.webdisc.WebDiscMod;
+import com.zoritism.webdisc.item.WebDiscItem;
 import com.zoritism.webdisc.network.WebDiscNetwork;
-import com.zoritism.webdisc.network.payload.PlayWebDiscMessage;
+import com.zoritism.webdisc.network.message.PlayWebDiscMessage;
 import com.zoritism.webdisc.registry.WebDiscRegistry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -28,6 +29,10 @@ public abstract class MixinJukeboxBlockEntity {
 
         ItemStack stack = self.getFirstItem();
         if (!stack.is(WebDiscRegistry.CUSTOM_RECORD.get())) return;
+
+        if (!WebDiscItem.isRecorded(stack)) {
+            return;
+        }
 
         CompoundTag tag = stack.getTag();
         if (tag == null) tag = new CompoundTag();

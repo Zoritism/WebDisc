@@ -4,7 +4,6 @@ import com.zoritism.webdisc.WebDiscMod;
 import com.zoritism.webdisc.config.WebDiscConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Util;
 import org.apache.commons.lang3.SystemUtils;
 
 import java.io.BufferedReader;
@@ -26,7 +25,17 @@ public final class YoutubeDLHelper {
     private static Path baseDir() {
         Minecraft mc = Minecraft.getInstance();
         File root = mc != null ? mc.gameDirectory : new File(".");
-        return root.toPath().resolve("WebDisc").resolve("youtubedl");
+        return root.toPath().resolve("webdisc").resolve("youtubedl");
+    }
+
+    private static String resolveExecutableFileName() {
+        if (SystemUtils.IS_OS_LINUX) {
+            return "yt-dlp_linux";
+        } else if (SystemUtils.IS_OS_MAC) {
+            return "yt-dlp_macos";
+        } else {
+            return "yt-dlp.exe";
+        }
     }
 
     private static void ensureExecutable() throws Exception {
@@ -43,12 +52,7 @@ public final class YoutubeDLHelper {
         Path dir = baseDir();
         dir.toFile().mkdirs();
 
-        String fileName = switch (Util.getPlatform()) {
-            case LINUX -> "yt-dlp_linux";
-            case OSX -> "yt-dlp_macos";
-            default -> "yt-dlp.exe";
-        };
-
+        String fileName = resolveExecutableFileName();
         File localExe = dir.resolve(fileName).toFile();
         Minecraft mc = Minecraft.getInstance();
 
@@ -84,7 +88,7 @@ public final class YoutubeDLHelper {
     }
 
     private static void logMissingYtDlp() {
-        WebDiscMod.logger.info("[WebDisc] yt-dlp not found. Put yt-dlp executable into WebDisc/youtubedl or enable downloadYoutubeDL in config.");
+        WebDiscMod.LOGGER.info("[WebDisc] yt-dlp not found. Put yt-dlp executable into WebDisc/youtubedl or enable downloadYoutubeDL in config.");
     }
 
     public static String run(String... args) throws Exception {
@@ -97,7 +101,7 @@ public final class YoutubeDLHelper {
         cmd.add(ytdlpPath);
         Collections.addAll(cmd, args);
 
-        WebDiscMod.logger.info("[WebDisc] yt-dlp: {}", String.join(" ", cmd));
+        WebDiscMod.LOGGER.info("[WebDisc] yt-dlp: {}", String.join(" ", cmd));
 
         Process proc;
         if (SystemUtils.IS_OS_LINUX) {
@@ -124,7 +128,7 @@ public final class YoutubeDLHelper {
                     errBuf.append(line).append('\n');
                 }
             }
-            WebDiscMod.logger.info("[WebDisc] yt-dlp stderr: {}", errBuf.toString());
+            WebDiscMod.LOGGER.info("[WebDisc] yt-dlp stderr: {}", errBuf.toString());
             throw new RuntimeException("yt-dlp exit code " + code);
         }
         return out.toString();

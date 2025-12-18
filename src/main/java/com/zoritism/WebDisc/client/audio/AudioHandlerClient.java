@@ -17,7 +17,7 @@ public class AudioHandlerClient {
     private static Path baseDir() {
         Minecraft mc = Minecraft.getInstance();
         File root = mc != null ? mc.gameDirectory : new File(".");
-        return root.toPath().resolve("WebDisc").resolve("client_downloads");
+        return root.toPath().resolve("webdisc").resolve("client_downloads");
     }
 
     private static String minecraftify(String url) {
