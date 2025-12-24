@@ -5,7 +5,7 @@
   },
   "overrides": [
     {
-      "predicate": { "heavybullet:finalized": 1.0 },
+      "predicate": { "webdisc:finalized": 1.0 },
       "model": "webdisc:item/webdisc_finalized"
     }
   ]

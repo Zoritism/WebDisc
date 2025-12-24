@@ -1,6 +1,7 @@
 package com.zoritism.webdisc;
 
 import com.zoritism.webdisc.client.WebDiscClient;
+import com.zoritism.webdisc.network.NetworkHandler;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.DistExecutor;
@@ -14,6 +15,9 @@ public final class WebDiscMod {
 
     public WebDiscMod() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+
+        // Network
+        NetworkHandler.register();
 
         // Registries
         WebDiscSounds.SOUND_EVENTS.register(modEventBus);
