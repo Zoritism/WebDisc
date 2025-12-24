@@ -5,8 +5,15 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "webdisc.refmap.json",
   "mixins": [
+    "webdisc.MixinJukeboxBlockEntity",
+    "webdisc.MixinSoundFinishedNotificationMessage",
+    "webdisc.MixinJukeboxUpgradeWrapper"
   ],
-  "client": [],
+  "client": [
+    "webdisc.MixinSoundBufferLibrary",
+    "webdisc.MixinStorageSoundHandlerPlay",
+    "webdisc.MixinSimpleChannelBlockFinishedWhenMuted"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

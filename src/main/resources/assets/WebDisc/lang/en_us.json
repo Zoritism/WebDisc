@@ -1,2 +1,22 @@
 {
+  "screen.webdisc.title": "WebDisc",
+  "screen.webdisc.label": "Enter URL:",
+  "screen.webdisc.input": "URL",
+  "screen.webdisc.accept": "Save",
+  "screen.webdisc.close": "Close",
+  "screen.webdisc.cancel": "Cancel",
+  "screen.webdisc.status.waiting": "Waiting",
+  "screen.webdisc.status.downloading": "Downloading...",
+  "screen.webdisc.status.success": "Saved",
+  "screen.webdisc.status.error": "Download failed",
+  "screen.webdisc.status.invalid_url": "Invalid URL",
+  "screen.webdisc.status.duration_failed": "Failed to detect duration",
+  "webdisc.ffmpeg.missing": "FFmpeg is required for WebDisc. Put ffmpeg into WebDisc/ffmpeg or enable downloadFFmpeg in config.",
+  "webdisc.ytdlp.missing": "yt-dlp is required for WebDisc. Put yt-dlp into WebDisc/youtubedl or enable downloadYoutubeDL in config.",
+  "webdisc.executable.permission": "Cannot execute %s. Check file permissions.",
+  "item.webdisc": "WebDisc",
+  "item.webdisc.desc": "Play your music via URL from YouTube and other platforms",
+  "item.webdisc.tooltip": "URL: %s",
+  "item.webdisc.recorded": "Recorded (%s s)",
+
 }

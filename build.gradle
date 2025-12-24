@@ -82,10 +82,14 @@ def journeymap_api_version = "1.20-1.9-SNAPSHOT"
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    compileOnly fg.deobf(files("libs/heavybullet-0.0.41.jar"))
+    compileOnly fg.deobf(files("libs/sophisticatedcore-1.20.1-1.2.98.1199.jar"))
+    annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
 }
 
 mixin {
-
+    add sourceSets.main, "webdisc.refmap.json"
+    config "webdisc.mixins.json"
 }
 
 tasks.withType(JavaCompile).configureEach {

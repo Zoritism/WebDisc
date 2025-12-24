@@ -1,0 +1,12 @@
+{
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "webdisc:item/WebDisc"
+  },
+  "overrides": [
+    {
+      "predicate": { "heavybullet:finalized": 1.0 },
+      "model": "webdisc:item/webdisc_finalized"
+    }
+  ]
+}
