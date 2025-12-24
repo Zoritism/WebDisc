@@ -1,11 +1,9 @@
 package com.zoritism.webdisc.client.audio;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.config.ModConfigHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.apache.commons.lang3.SystemUtils;
-import org.slf4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -22,7 +20,6 @@ import java.util.List;
 
 public final class FFmpegHelper {
     private static String ffmpegPath;
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private FFmpegHelper() {}
 
@@ -122,11 +119,9 @@ public final class FFmpegHelper {
             lines = new String[]{"FFmpeg not found for WebDisc."};
         }
         for (String s : lines) {
-            LOGGER.info("[WebDisc] {}", s);
         }
     }
 
-    // --- new API for cancellable downloads ---
 
     public static void ensureExecutablePublic() throws Exception {
         ensureExecutable();
@@ -182,7 +177,6 @@ public final class FFmpegHelper {
                 while ((line = err.readLine()) != null) {
                     sb.append(line).append('\n');
                 }
-                LOGGER.info("[WebDisc] ffmpeg stderr: {}", sb.toString());
             }
             throw new RuntimeException("ffmpeg exited with code " + code);
         }

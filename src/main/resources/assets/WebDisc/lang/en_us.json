@@ -14,9 +14,8 @@
   "webdisc.ffmpeg.missing": "FFmpeg is required for WebDisc. Put ffmpeg into WebDisc/ffmpeg or enable downloadFFmpeg in config.",
   "webdisc.ytdlp.missing": "yt-dlp is required for WebDisc. Put yt-dlp into WebDisc/youtubedl or enable downloadYoutubeDL in config.",
   "webdisc.executable.permission": "Cannot execute %s. Check file permissions.",
-  "item.webdisc": "WebDisc",
-  "item.webdisc.desc": "Play your music via URL from YouTube and other platforms",
+  "item.webdisc.webdisc": "WebDisc",
+  "item.webdisc.webdisc.desc": "Play your music via URL from YouTube and other platforms",
   "item.webdisc.tooltip": "URL: %s",
-  "item.webdisc.recorded": "Recorded (%s s)",
-
+  "item.webdisc.recorded": "Recorded (%s s)"
 }

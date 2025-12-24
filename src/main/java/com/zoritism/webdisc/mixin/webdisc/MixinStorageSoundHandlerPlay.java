@@ -1,13 +1,11 @@
 package com.zoritism.webdisc.mixin.webdisc;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.WebDiscPlaybackRegistry;
 import com.zoritism.webdisc.client.WebDiscClientHandler;
 import com.zoritism.webdisc.client.audio.sound.WebFileSound;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.StorageSoundHandler;
-import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -22,8 +20,6 @@ import java.util.UUID;
 @Mixin(value = StorageSoundHandler.class, remap = false)
 public abstract class MixinStorageSoundHandlerPlay {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     @Shadow
     @Final
     private static Map<UUID, SoundInstance> storageSounds;
@@ -36,8 +32,6 @@ public abstract class MixinStorageSoundHandlerPlay {
 
         try {
             if (WebDiscPlaybackRegistry.isWebDisc(storageUuid) && !(sound instanceof WebFileSound)) {
-                LOGGER.info("[WebDisc][StorageSoundHandlerPlay] ignoring placeholder sound for WebDisc uuid={}, class={}",
-                        storageUuid, sound.getClass().getName());
                 return;
             }
         } catch (Throwable ignored) {}
@@ -54,11 +48,7 @@ public abstract class MixinStorageSoundHandlerPlay {
 
         try {
             mc.getSoundManager().play(sound);
-            LOGGER.info("[WebDisc][StorageSoundHandlerPlay] started sound for uuid={} (class={})",
-                    storageUuid, sound.getClass().getName());
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][StorageSoundHandlerPlay] failed to play sound for uuid={}: {}",
-                    storageUuid, t.toString());
         }
     }
 
@@ -89,12 +79,8 @@ public abstract class MixinStorageSoundHandlerPlay {
             SoundInstance existing = storageSounds.remove(storageUuid);
             if (existing != null && mc != null) {
                 mc.getSoundManager().stop(existing);
-                LOGGER.info("[WebDisc][StorageSoundHandlerPlay] stopExisting: uuid={}, class={}",
-                        storageUuid, existing.getClass().getName());
             }
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][StorageSoundHandlerPlay] stopExisting failed for uuid={}: {}",
-                    storageUuid, t.toString());
         }
     }
 }

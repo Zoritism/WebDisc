@@ -14,8 +14,8 @@
   "webdisc.ffmpeg.missing": "Для WebDisc нужен FFmpeg. Положите ffmpeg в WebDisc/ffmpeg или включите downloadFFmpeg в конфиге.",
   "webdisc.ytdlp.missing": "Для WebDisc нужен yt-dlp. Положите yt-dlp в WebDisc/youtubedl или включите downloadYoutubeDL в конфиге.",
   "webdisc.executable.permission": "Не удаётся запустить %s. Проверьте права на файл.",
-  "item.webdisc": "WebDisc",
-  "item.webdisc.desc": "Играйте свою музыку по URL с YouTube и других платформ",
+  "item.webdisc.webdisc": "WebDisc",
+  "item.webdisc.webdisc.desc": "Играйте свою музыку по URL с YouTube и других платформ",
   "item.webdisc.tooltip": "URL: %s",
-  "item.webdisc.recorded": "Записано (%s сек)",
+  "item.webdisc.recorded": "Записано (%s сек)"
 }

@@ -1,6 +1,5 @@
 package com.zoritism.webdisc.client;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.network.NetworkHandler;
 import com.zoritism.webdisc.client.audio.AudioHandlerClient;
 import com.zoritism.webdisc.client.audio.WebDiscDurationHelper;
@@ -12,14 +11,11 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import org.slf4j.Logger;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.concurrent.CompletableFuture;
 
 public class DiscUrlScreen extends Screen {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final int WIDTH = 220;
     private static final int HEIGHT = 104;
@@ -133,15 +129,12 @@ public class DiscUrlScreen extends Screen {
 
         this.lastUrl = url;
 
-        // 1) Сохраняем URL на сервере (сброс finalized/duration делается на сервере)
         NetworkHandler.CHANNEL.sendToServer(new SetUrlMessage(url));
 
-        // 2) Запускаем клиентскую скачку (GUI остаётся открытым)
         setState(UiState.DOWNLOADING, Component.translatable("screen.webdisc.status.downloading"));
 
         AudioHandlerClient handler = new AudioHandlerClient();
 
-        // если вдруг уже скачано - можно не грузить, а сразу пробить длительность
         if (handler.hasOgg(url)) {
             onDownloadedOk(url);
             return;
@@ -153,7 +146,7 @@ public class DiscUrlScreen extends Screen {
             if (mc == null) return;
             mc.execute(() -> {
                 if (state != UiState.DOWNLOADING) {
-                    // уже отменили/закрыли/поменяли состояние
+
                     return;
                 }
                 if (!Boolean.TRUE.equals(success)) {
@@ -172,7 +165,6 @@ public class DiscUrlScreen extends Screen {
             return;
         }
 
-        // Финализация на сервере: выставит finalized=true, durationTicks, bucketTicks
         NetworkHandler.CHANNEL.sendToServer(new FinalizeRecordMessage(url, ticks));
 
         setState(UiState.SUCCESS, Component.translatable("screen.webdisc.status.success"));
@@ -208,13 +200,11 @@ public class DiscUrlScreen extends Screen {
                 handler.deleteAllFilesForUrl(lastUrl);
             }
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] DiscUrlScreen.cancelActiveDownload: {}", t.toString());
         }
     }
 
     @Override
     public void onClose() {
-        // Требование: закрытие GUI = cancel, но GUI не должен закрываться во время DOWNLOADING
         if (state == UiState.DOWNLOADING) {
             cancelActiveDownload(true);
             setState(UiState.WAITING, Component.translatable("screen.webdisc.status.waiting"));
@@ -270,7 +260,6 @@ public class DiscUrlScreen extends Screen {
 
         gg.drawString(font, Component.translatable("screen.webdisc.label"), x + 10, y + 10, 0xFFFFFF, false);
 
-        // статус по центру над кнопками и под инпутом
         int statusY = y + 44;
         int statusW = font.width(statusText);
         gg.drawString(font, statusText, x + (WIDTH - statusW) / 2, statusY, 0xE0E0E0, false);

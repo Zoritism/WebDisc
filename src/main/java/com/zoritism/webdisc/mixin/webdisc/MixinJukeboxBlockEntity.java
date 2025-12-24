@@ -1,6 +1,5 @@
 package com.zoritism.webdisc.mixin.webdisc;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.item.WebDiscItem;
 import com.zoritism.webdisc.network.NetworkHandler;
 import com.zoritism.webdisc.network.message.PlayWebDiscMessage;
@@ -13,7 +12,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 import net.minecraftforge.network.PacketDistributor;
-import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -24,8 +22,6 @@ import java.util.UUID;
 
 @Mixin(value = JukeboxBlockEntity.class, remap = true)
 public abstract class MixinJukeboxBlockEntity {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static UUID uuidForJukebox(ServerLevel level, BlockPos pos) {
         if (level == null || pos == null) return Util.NIL_UUID;
@@ -41,9 +37,7 @@ public abstract class MixinJukeboxBlockEntity {
                     PacketDistributor.TRACKING_CHUNK.with(() -> level.getChunkAt(pos)),
                     new PlayWebDiscMessage(pos, "", safeUuid, -1, 0, 0)
             );
-            LOGGER.info("[WebDisc][Jukebox] sent STOP PlayWebDiscMessage: uuid={}, pos={}", safeUuid, pos);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][Jukebox] stop: failed to send STOP PlayWebDiscMessage: {}", t.toString());
         }
     }
 
@@ -88,18 +82,15 @@ public abstract class MixinJukeboxBlockEntity {
         try {
             lengthTicks = WebDiscItem.getDurationTicks(stack);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][Jukebox] startPlaying: failed to read durationTicks: {}", t.toString());
             return;
         }
         if (lengthTicks <= 0) {
-            LOGGER.info("[WebDisc][Jukebox] startPlaying: invalid durationTicks={}, pos={}", lengthTicks, pos);
             return;
         }
 
         try {
             self.setItem(0, ItemStack.EMPTY);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][Jukebox] startPlaying: failed to clear jukebox slot: {}", t.toString());
         }
 
         UUID uuid = uuidForJukebox(serverLevel, pos);
@@ -119,7 +110,6 @@ public abstract class MixinJukeboxBlockEntity {
                     finish
             );
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][Jukebox] startPlaying: failed to register in WebDiscJukeboxSyncRegistry: {}", t.toString());
         }
 
         try {
@@ -127,9 +117,7 @@ public abstract class MixinJukeboxBlockEntity {
                     PacketDistributor.TRACKING_CHUNK.with(() -> serverLevel.getChunkAt(pos)),
                     new PlayWebDiscMessage(pos, url, uuid, -1, 0, lengthTicks)
             );
-            LOGGER.info("[WebDisc][Jukebox] startPlaying: sent PlayWebDiscMessage(uuid={}, pos={}, lengthTicks={})", uuid, pos, lengthTicks);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][Jukebox] startPlaying: failed to send PlayWebDiscMessage: {}", t.toString());
         }
     }
 

@@ -1,12 +1,10 @@
 package com.zoritism.webdisc.mixin.webdisc;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.WebDiscPlaybackRegistry;
 import com.zoritism.webdisc.client.WebDiscClientHandler;
 import com.zoritism.webdisc.server.WebDiscJukeboxSyncRegistry;
 import net.minecraft.server.level.ServerPlayer;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.SoundFinishedNotificationMessage;
-import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -17,8 +15,6 @@ import java.util.UUID;
 
 @Mixin(value = SoundFinishedNotificationMessage.class, remap = false)
 public abstract class MixinSoundFinishedNotificationMessage {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     @Inject(
             method = "handleMessage(Lnet/minecraft/server/level/ServerPlayer;Lnet/p3pp3rf1y/sophisticatedcore/upgrades/jukebox/SoundFinishedNotificationMessage;)V",
@@ -49,8 +45,6 @@ public abstract class MixinSoundFinishedNotificationMessage {
         try {
             long gt = sender.level().getGameTime();
             String dim = sender.level().dimension().location().toString();
-            LOGGER.info("[WebDisc][SoundFinishedNotification] from={}, dim={}, gameTime={}, storageUuid={}",
-                    sender.getGameProfile().getName(), dim, gt, storageUuid);
         } catch (Throwable ignored) {}
 
         boolean isWebDiscSlot = false;
@@ -72,9 +66,7 @@ public abstract class MixinSoundFinishedNotificationMessage {
 
         if (isWebDiscSlot) {
             try {
-                LOGGER.info("[WebDisc][SoundFinishedNotification] storageUuid={} is WebDisc, letting ServerStorageSoundHandler.onSoundFinished run", storageUuid);
             } catch (Throwable ignored) {}
         }
-        // ВАЖНО: никаких ci.cancel()
     }
 }

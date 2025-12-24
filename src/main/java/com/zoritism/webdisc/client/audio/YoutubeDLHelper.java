@@ -1,11 +1,9 @@
 package com.zoritism.webdisc.client.audio;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.config.ModConfigHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.apache.commons.lang3.SystemUtils;
-import org.slf4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -21,7 +19,6 @@ import java.util.List;
 
 public final class YoutubeDLHelper {
     private static String ytdlpPath;
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private YoutubeDLHelper() {}
 
@@ -91,10 +88,7 @@ public final class YoutubeDLHelper {
     }
 
     private static void logMissingYtDlp() {
-        LOGGER.info("[WebDisc] yt-dlp not found. Put yt-dlp executable into WebDisc/youtubedl or enable downloadYoutubeDL in config.");
     }
-
-    // --- new API for cancellable downloads ---
 
     public static void ensureExecutablePublic() throws Exception {
         ensureExecutable();
@@ -127,8 +121,6 @@ public final class YoutubeDLHelper {
         }
         return out.toString();
     }
-
-    // --- old API (kept for compatibility) ---
 
     public static String run(String... args) throws Exception {
         ensureExecutable();
@@ -165,7 +157,6 @@ public final class YoutubeDLHelper {
                     errBuf.append(line).append('\n');
                 }
             }
-            LOGGER.info("[WebDisc] yt-dlp stderr: {}", errBuf.toString());
             throw new RuntimeException("yt-dlp exit code " + code);
         }
         return out.toString();

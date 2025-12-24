@@ -1,6 +1,5 @@
 package com.zoritism.webdisc.item;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.network.NetworkHandler;
 import com.zoritism.webdisc.network.message.OpenUrlMenuMessage;
 import net.minecraft.ChatFormatting;
@@ -19,24 +18,11 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.function.Supplier;
 
-/**
- * Записываемый “веб-диск”.
- * URL хранится в NBT по ключу URL_NBT, длительность:
- * - webdisc:durationTicks — "сырая" (измеренная) длительность;
- * - webdisc:bucketTicks   — квантованная по бакетам (для проигрывания).
- *
- * finalized=true:
- * - разрешает проигрывание;
- * - запрещает открывать GUI на ПКМ.
- */
 public class WebDiscItem extends RecordItem {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final String URL_NBT = "webdisc:url";
     private static final String TAG_RECORDED = "webdisc:finalized";
@@ -61,10 +47,6 @@ public class WebDiscItem extends RecordItem {
         return Math.max(len, 0);
     }
 
-    /**
-     * Квантованная длительность (бакеты по 5 секунд).
-     * Если bucketTicks ещё нет (старые диски) — используем raw durationTicks.
-     */
     public static int getBucketTicks(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return 0;
         CompoundTag tag = stack.getTag();
@@ -86,12 +68,10 @@ public class WebDiscItem extends RecordItem {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
-        // Если диск уже записан — ведём себя как обычный рекорд (GUI не открываем)
         if (isRecorded(stack)) {
             return InteractionResultHolder.pass(stack);
         }
 
-        // Не записан: открываем GUI на сервере
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
             ItemStack copy = stack.copy();
             try {
@@ -100,7 +80,6 @@ public class WebDiscItem extends RecordItem {
                         new OpenUrlMenuMessage(copy)
                 );
             } catch (Throwable t) {
-                LOGGER.info("[WebDisc] use(): failed to send OpenUrlMenuMessage: {}", t.toString());
             }
         }
 

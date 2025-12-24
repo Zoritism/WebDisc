@@ -1,13 +1,9 @@
 package com.zoritism.webdisc.client.audio.sound;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.client.resources.sounds.TickableSoundInstance;
 import net.minecraft.world.entity.Entity;
-import org.slf4j.Logger;
 
 public class WebEntityBoundSound extends WebFileSound implements TickableSoundInstance {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private final Entity entity;
     private boolean stopped;
@@ -16,8 +12,6 @@ public class WebEntityBoundSound extends WebFileSound implements TickableSoundIn
         super(url, entity.position());
         this.entity = entity;
         try {
-            LOGGER.info("[WebDisc][WebEntityBoundSound] created for entity id={}, class={}, url='{}', urlKey='{}'",
-                    entity.getId(), entity.getClass().getName(), getOriginalUrl(), getUrlKey());
         } catch (Throwable ignored) {}
     }
 
@@ -29,7 +23,6 @@ public class WebEntityBoundSound extends WebFileSound implements TickableSoundIn
     protected void stopInternal() {
         this.stopped = true;
         try {
-            LOGGER.info("[WebDisc][WebEntityBoundSound] stopInternal: entityId={}, urlKey='{}'", entity.getId(), getUrlKey());
         } catch (Throwable ignored) {}
     }
 

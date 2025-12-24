@@ -1,10 +1,8 @@
 package com.zoritism.webdisc.client.audio;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.util.WebHashing;
 import net.minecraft.client.Minecraft;
 import org.apache.commons.lang3.SystemUtils;
-import org.slf4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -16,19 +14,13 @@ public final class WebDiscDurationHelper {
 
     private WebDiscDurationHelper() {}
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private static final double MIN_SECONDS = 1.0;
     private static final double MAX_SECONDS = 600.0;
     private static final int TICKS_PER_SECOND = 20;
     private static final int MIN_TICKS = (int) (MIN_SECONDS * TICKS_PER_SECOND);
     private static final int MAX_TICKS = (int) (MAX_SECONDS * TICKS_PER_SECOND);
 
-    /**
-     * Возвращает реальную длительность трека в тиках (до квантования).
-     * Квантацию до бакетов делает сервер при финализации.
-     */
-    public static int getLengthTicksForUrl(String url) {
+        public static int getLengthTicksForUrl(String url) {
         try {
             if (url == null || url.isBlank()) return -1;
 
@@ -39,7 +31,6 @@ public final class WebDiscDurationHelper {
             Path dir = root.toPath().resolve("webdisc").resolve("audio_cache");
             File ogg = dir.resolve(key + ".ogg").toFile();
             if (!ogg.exists()) {
-                LOGGER.info("[WebDisc] Duration: OGG file not found at {}", ogg.getAbsolutePath());
                 return -1;
             }
 
@@ -60,7 +51,6 @@ public final class WebDiscDurationHelper {
 
             return ticks;
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] URL duration probe failed: {}", t.toString());
             return -1;
         }
     }
@@ -106,7 +96,6 @@ public final class WebDiscDurationHelper {
             }
             return Double.parseDouble(raw);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] Duration: ffprobe failed: {}", t.toString());
             return -1;
         }
     }
@@ -115,7 +104,6 @@ public final class WebDiscDurationHelper {
         try {
             String ffmpegPath = FFmpegHelper.getFfmpegPath();
             if (ffmpegPath == null) {
-                LOGGER.info("[WebDisc] Duration: ffmpeg not available");
                 return -1;
             }
 
@@ -159,7 +147,6 @@ public final class WebDiscDurationHelper {
             }
             return seconds;
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] Duration: ffmpeg stderr parse failed: {}", t.toString());
             return -1;
         }
     }
@@ -205,11 +192,7 @@ public final class WebDiscDurationHelper {
         }
     }
 
-    /**
-     * Квантование длительности в тиках к ближайшему бакету (по умолчанию шаг 5 секунд).
-     * Используется на сервере при финализации.
-     */
-    public static int quantizeToBucketTicks(int rawTicks) {
+        public static int quantizeToBucketTicks(int rawTicks) {
         if (rawTicks <= 0) return MIN_TICKS;
         int clamped = Math.max(MIN_TICKS, Math.min(MAX_TICKS, rawTicks));
         int step = 5 * TICKS_PER_SECOND; // 5 секунд

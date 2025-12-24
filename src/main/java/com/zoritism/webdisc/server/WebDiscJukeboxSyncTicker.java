@@ -1,6 +1,5 @@
 package com.zoritism.webdisc.server;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.network.NetworkHandler;
 import com.zoritism.webdisc.network.message.WebdiscJukeboxSyncMessage;
 import net.minecraft.server.level.ServerLevel;
@@ -8,7 +7,6 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
-import org.slf4j.Logger;
 
 import java.util.Map;
 import java.util.UUID;
@@ -16,7 +14,6 @@ import java.util.UUID;
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class WebDiscJukeboxSyncTicker {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int SYNC_INTERVAL_TICKS = 40;
 
     private WebDiscJukeboxSyncTicker() {}
@@ -51,10 +48,6 @@ public final class WebDiscJukeboxSyncTicker {
             long life = now - start;
             if (life > WebDiscJukeboxSyncRegistry.MAX_LIFETIME_TICKS) {
                 try {
-                    LOGGER.info(
-                            "[WebDisc][JukeboxSyncTicker] removing stale entry: storageUuid={}, dim={}, pos={}, url='{}', startGameTimeTicks={}, lifeTicks={}",
-                            uuid, e.dimension.location(), e.pos, e.url, start, life
-                    );
                 } catch (Throwable ignored) {}
                 WebDiscJukeboxSyncRegistry.remove(uuid);
                 continue;
@@ -84,16 +77,8 @@ public final class WebDiscJukeboxSyncTicker {
                         PacketDistributor.TRACKING_CHUNK.with(() -> serverLevel.getChunkAt(e.pos)),
                         msg
                 );
-                LOGGER.info(
-                        "[WebDisc][JukeboxSyncTicker] sent sync via TRACKING_CHUNK for storageUuid={}, pos={}, dim={}, remainingTicks={}, lengthTicks={}",
-                        e.storageUuid, e.pos, serverLevel.dimension().location(), remainingTicks, discLength
-                );
             } catch (Throwable t) {
                 try {
-                    LOGGER.info(
-                            "[WebDisc][JukeboxSyncTicker] failed to send sync for storageUuid={} at {}:  {}",
-                            e.storageUuid, e.pos, t.toString()
-                    );
                 } catch (Throwable ignored) {}
             }
         }
@@ -111,10 +96,6 @@ public final class WebDiscJukeboxSyncTicker {
             return (int) dtClamped;
         } catch (Throwable t) {
             try {
-                LOGGER.info(
-                        "[WebDisc][JukeboxSyncTicker] computeElapsedTicks failed for storageUuid={}:  {}",
-                        e != null ? e.storageUuid : null, t.toString()
-                );
             } catch (Throwable ignored) {}
             return -1;
         }

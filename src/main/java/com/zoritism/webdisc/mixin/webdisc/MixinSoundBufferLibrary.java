@@ -1,12 +1,11 @@
 package com.zoritism.webdisc.mixin.webdisc;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.client.WebDiscClientHandler;
 import com.zoritism.webdisc.client.audio.WebDiscAudioHelper;
 import net.minecraft.client.sounds.AudioStream;
 import net.minecraft.client.sounds.SoundBufferLibrary;
 import net.minecraft.resources.ResourceLocation;
-import org.slf4j.Logger;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,8 +15,6 @@ import java.util.concurrent.CompletableFuture;
 
 @Mixin(SoundBufferLibrary.class)
 public abstract class MixinSoundBufferLibrary {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     @Inject(
             method = "getStream(Lnet/minecraft/resources/ResourceLocation;Z)Ljava/util/concurrent/CompletableFuture;",
@@ -53,7 +50,6 @@ public abstract class MixinSoundBufferLibrary {
         try {
             offsetMs = WebDiscClientHandler.getOffsetForUrlKey(urlKey);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][SoundBufferLibrary] getStream: failed to get offset for urlKey='{}': {}", urlKey, t.toString());
             offsetMs = 0;
         }
 

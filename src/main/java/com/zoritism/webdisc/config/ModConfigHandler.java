@@ -25,7 +25,6 @@ public class ModConfigHandler {
 
         public Common(ForgeConfigSpec.Builder builder) {
 
-            // --- WebDisc ---
             builder.push("WebDisc");
             webdiscWhitelistedWebsites = builder
                     .comment("Site names shown to player when URL is not allowed")

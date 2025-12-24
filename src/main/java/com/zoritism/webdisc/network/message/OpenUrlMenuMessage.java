@@ -9,9 +9,6 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-/**
- * S2C: открыть клиенту окно ввода URL для диска.
- */
 public record OpenUrlMenuMessage(ItemStack disc) {
 
     public static void encode(OpenUrlMenuMessage msg, FriendlyByteBuf buf) {

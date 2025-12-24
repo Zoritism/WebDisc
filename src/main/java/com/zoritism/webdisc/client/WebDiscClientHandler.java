@@ -1,6 +1,5 @@
 package com.zoritism.webdisc.client;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.client.audio.AudioHandlerClient;
 import com.zoritism.webdisc.client.audio.WebDiscAudioHelper;
 import com.zoritism.webdisc.client.audio.sound.WebEntityBoundSound;
@@ -12,7 +11,6 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.StorageSoundHandler;
-import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,8 +24,6 @@ public final class WebDiscClientHandler {
 
     private WebDiscClientHandler() {}
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private static final Map<Vec3, WebFileSound> soundsByPos = new HashMap<>();
     private static final Map<UUID, WebFileSound> soundsByUuid = new HashMap<>();
 
@@ -35,7 +31,6 @@ public final class WebDiscClientHandler {
     private static final Map<UUID, Integer> startElapsedTicksByUuid = new HashMap<>();
     private static final Map<UUID, Integer> discLengthTicksByUuid = new HashMap<>();
 
-    // urlKey -> offsetMs (мост к SoundBufferLibrary.getStream)
     private static final Map<String, Integer> offsetsByUrlKey = new HashMap<>();
 
     private static final Set<UUID> validListeners = new HashSet<>();
@@ -54,7 +49,6 @@ public final class WebDiscClientHandler {
     private static boolean clientReadyForSync = false;
     private static long clientReadyFromGameTime = 0L;
 
-    // NEW: сколько тиков после старта мы НЕ считаем "isActive=false" ошибкой
     private static final int START_PLAY_GRACE_TICKS = 10;
     private static final Map<UUID, Long> lastStartClientGameTimeByUuid = new HashMap<>();
 
@@ -134,7 +128,6 @@ public final class WebDiscClientHandler {
 
     public static void resetAll() {
         try {
-            LOGGER.info("[WebDisc][ClientHandler] resetAll: clearing all sounds and timing/off states");
         } catch (Throwable ignored) {}
 
         Minecraft mc = Minecraft.getInstance();
@@ -191,7 +184,6 @@ public final class WebDiscClientHandler {
         try {
             return mc.getSoundManager().isActive(sound);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][ClientHandler] isSoundActuallyPlaying: failed for uuid={}: {}", uuid, t.toString());
             return false;
         }
     }
@@ -222,7 +214,6 @@ public final class WebDiscClientHandler {
             try {
                 mc.getSoundManager().stop(existing);
             } catch (Throwable t) {
-                LOGGER.info("[WebDisc][ClientHandler] clearByUuid: failed to stop sound for uuid={}: {}", uuid, t.toString());
             }
             try {
                 WebDiscAudioHelper.cleanupOffsetFilesForKey(existing.getUrlKey());
@@ -244,7 +235,6 @@ public final class WebDiscClientHandler {
         try {
             clearByUuid(storageUuid);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][ClientHandler] onStorageSoundFinished: error while clearing uuid={}: {}", storageUuid, t.toString());
         }
     }
 
@@ -309,8 +299,7 @@ public final class WebDiscClientHandler {
 
         boolean hasUuid = uuid != null && !uuid.equals(Util.NIL_UUID);
 
-        // ВАЖНО: vanilla jukebox не должен идти через SophCore StorageSoundHandler,
-        // иначе прилетает SoundFinishedNotificationMessage и всё стопается.
+
         boolean forceVanillaPlayback = entityId < 0;
 
         Entity entity = (entityId >= 0) ? level.getEntity(entityId) : null;
@@ -331,8 +320,6 @@ public final class WebDiscClientHandler {
                     try {
                         mc.getSoundManager().stop(existing);
                     } catch (Throwable t) {
-                        LOGGER.info("[WebDisc][ClientHandler] stop by empty URL: failed to stop local sound for uuid={}: {}",
-                                uuid, t.toString());
                     }
                     try {
                         WebDiscAudioHelper.cleanupOffsetFilesForKey(existing.getUrlKey());
@@ -344,8 +331,6 @@ public final class WebDiscClientHandler {
                     try {
                         mc.getSoundManager().stop(existing);
                     } catch (Throwable t) {
-                        LOGGER.info("[WebDisc][ClientHandler] stop by empty URL: failed to stop positional sound at {}: {}",
-                                center, t.toString());
                     }
                     try {
                         WebDiscAudioHelper.cleanupOffsetFilesForKey(existing.getUrlKey());
@@ -374,7 +359,6 @@ public final class WebDiscClientHandler {
                 try {
                     mc.getSoundManager().stop(existing);
                 } catch (Throwable t) {
-                    LOGGER.info("[WebDisc][ClientHandler] reset: failed to stop previous sound for uuid={}: {}", uuid, t.toString());
                 }
                 String oldKey = existing.getUrlKey();
                 if (!oldKey.equals(newKey)) {
@@ -389,7 +373,6 @@ public final class WebDiscClientHandler {
                 try {
                     mc.getSoundManager().stop(existing);
                 } catch (Throwable t) {
-                    LOGGER.info("[WebDisc][ClientHandler] reset positional: failed to stop previous sound at {}: {}", center, t.toString());
                 }
                 String oldKey = existing.getUrlKey();
                 if (!oldKey.equals(newKey)) {
@@ -471,14 +454,10 @@ public final class WebDiscClientHandler {
                     try {
                         if (finalForceVanillaPlayback) {
                             innerMc.getSoundManager().play(fs2);
-                            LOGGER.info("[WebDisc][ClientHandler] vanilla play: started sound for uuid={} (class={})",
-                                    uuid, fs2.getClass().getName());
                         } else {
                             StorageSoundHandler.playStorageSound(uuid, fs2);
                         }
                     } catch (Throwable t) {
-                        LOGGER.info("[WebDisc][ClientHandler] failed to start sound for uuid={} (async): {}",
-                                uuid, t.toString());
                     }
 
                     registerTiming(uuid, finalSafeElapsed, finalSafeLen);
@@ -503,7 +482,6 @@ public final class WebDiscClientHandler {
                     try {
                         innerMc.getSoundManager().play(fs2);
                     } catch (Throwable t) {
-                        LOGGER.info("[WebDisc][ClientHandler] failed to play positional sound at {} (async): {}", center, t.toString());
                     }
                 }
             });
@@ -542,14 +520,10 @@ public final class WebDiscClientHandler {
             try {
                 if (forceVanillaPlayback) {
                     mc.getSoundManager().play(fs);
-                    LOGGER.info("[WebDisc][ClientHandler] vanilla play: started sound for uuid={} (class={})",
-                            uuid, fs.getClass().getName());
                 } else {
                     StorageSoundHandler.playStorageSound(uuid, fs);
                 }
             } catch (Throwable t) {
-                LOGGER.info("[WebDisc][ClientHandler] failed to start sound for uuid={} (sync): {}",
-                        uuid, t.toString());
             }
 
             registerTiming(uuid, safeElapsed, safeLen);
@@ -574,7 +548,6 @@ public final class WebDiscClientHandler {
             try {
                 mc.getSoundManager().play(fs);
             } catch (Throwable t) {
-                LOGGER.info("[WebDisc][ClientHandler] failed to play positional sound at {} (sync): {}", center, t.toString());
             }
         }
     }
@@ -612,18 +585,6 @@ public final class WebDiscClientHandler {
                                           SessionState ss,
                                           int discLengthTicks) {
         try {
-            LOGGER.info(
-                    "[WebDisc][ClientHandler][RESYNC] reason={}, uuid={}, serverRemainingTicks={}, clientRemainingTicks={}, deltaTicks={}, discLengthTicks={}, offState={}, offOffsetMs={}, pendingInitialSeek={}",
-                    reason,
-                    uuid,
-                    serverRemainingTicks,
-                    clientRemainingTicks,
-                    deltaTicks,
-                    discLengthTicks,
-                    ss != null ? ss.offState : null,
-                    ss != null ? ss.offOffsetMs : -1,
-                    ss != null && ss.pendingInitialSeek
-            );
         } catch (Throwable ignored) {}
     }
 
@@ -676,7 +637,6 @@ public final class WebDiscClientHandler {
                     handler.downloadAsOgg(url);
                 }
             } catch (Throwable t) {
-                LOGGER.info("[WebDisc][JukeboxSync] prefetch failed for uuid={}: {}", storageUuid, t.toString());
             }
             return;
         }
@@ -704,7 +664,6 @@ public final class WebDiscClientHandler {
         }
 
         if (!isSoundActuallyPlaying(storageUuid)) {
-            // NEW: не рестартим сразу после play() — у SoundEngine может быть задержка
             if (isWithinStartGrace(storageUuid, nowClientTicks)) {
                 return;
             }
@@ -842,8 +801,6 @@ public final class WebDiscClientHandler {
 
             long age = nowClientTicks - lastSeen;
             if (age > INACTIVE_TTL_TICKS) {
-                LOGGER.info("[WebDisc][ClientHandler] cleanupInactiveSoundsByTtl: uuid={} timed out (ageTicks={}, ttlTicks={}), clearing",
-                        uuid, age, INACTIVE_TTL_TICKS);
                 clearByUuid(uuid);
             }
         }

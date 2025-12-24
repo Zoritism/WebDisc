@@ -6,9 +6,6 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
-/**
- * Звуки подсистемы WebDisc, зарегистрированные под модом webdisc.
- */
 public final class WebDiscSounds {
 
     private WebDiscSounds() {}

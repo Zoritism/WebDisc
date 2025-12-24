@@ -1,23 +1,15 @@
 package com.zoritism.webdisc.network.message;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.client.WebDiscClientHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkEvent;
-import org.slf4j.Logger;
 
 import java.util.UUID;
 import java.util.function.Supplier;
 
-/**
- * S2C: периодический sync от WebDiscJukeboxSyncTicker.
- *
- * Сервер шлёт remainingTicks (сколько осталось до конца композиции).
- * Клиент сравнивает remaining до конца текущего реально играющего файла (оригинал/_off).
- */
 public record WebdiscJukeboxSyncMessage(
         UUID storageUuid,
         BlockPos pos,
@@ -27,8 +19,6 @@ public record WebdiscJukeboxSyncMessage(
         int discLengthTicks,
         long finishGameTimeTicks
 ) {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     public static void encode(WebdiscJukeboxSyncMessage msg, FriendlyByteBuf buf) {
         buf.writeUUID(msg.storageUuid);
@@ -67,10 +57,6 @@ public record WebdiscJukeboxSyncMessage(
             try {
                 Minecraft mc = Minecraft.getInstance();
                 String playerName = (mc != null && mc.player != null) ? mc.player.getGameProfile().getName() : "UNKNOWN";
-                LOGGER.info(
-                        "[WebDisc][JukeboxSync] CLIENT '{}' received sync: storageUuid={}, pos={}, remainingTicks={}, lengthTicks={}, finishGameTimeTicks={}, url='{}'",
-                        playerName, uuid, msg.pos(), serverRemaining, discLength, serverFinish, msg.url()
-                );
             } catch (Throwable ignored) {}
 
             WebDiscClientHandler.onSync(

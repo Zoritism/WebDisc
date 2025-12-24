@@ -1,7 +1,6 @@
 package com.zoritism.webdisc.client.audio;
 
 import com.mojang.blaze3d.audio.OggAudioStream;
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.WebDiscMod;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -9,7 +8,6 @@ import net.minecraft.client.sounds.AudioStream;
 import net.minecraft.client.sounds.LoopingAudioStream;
 import net.minecraft.resources.ResourceLocation;
 import org.apache.commons.lang3.SystemUtils;
-import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -34,8 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class WebDiscAudioHelper {
 
     private WebDiscAudioHelper() {}
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final long MAX_FILE_AGE_DAYS = 3L;
     private static final long MAX_CACHE_BYTES = 1L * 1024L * 1024L * 1024L;
@@ -109,7 +105,6 @@ public final class WebDiscAudioHelper {
             for (File f : toDelete) {
                 try {
                     if (f.delete()) {
-                        LOGGER.info("[WebDisc] cleanupOffsetFilesForKey: deleted temp offset file '{}'", f.getAbsolutePath());
                     }
                 } catch (Throwable ignored) {}
             }
@@ -138,7 +133,6 @@ public final class WebDiscAudioHelper {
                 }
             } catch (Throwable ignored) {}
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] cleanupOffsetFilesForKey: failed for urlKey='{}': {}", urlKey, t.toString());
         }
     }
 
@@ -147,7 +141,6 @@ public final class WebDiscAudioHelper {
             Path cacheDirPath = audioCacheDir();
             File cacheDir = cacheDirPath.toFile();
             if (!cacheDir.exists() || !cacheDir.isDirectory()) {
-                LOGGER.info("[WebDisc] cleanupAllOffsetFiles: cache dir does not exist or is not a directory: '{}'", cacheDir.getAbsolutePath());
                 return;
             }
             File[] toDelete = cacheDir.listFiles(new FilenameFilter() {
@@ -157,30 +150,23 @@ public final class WebDiscAudioHelper {
                 }
             });
             if (toDelete == null) {
-                LOGGER.info("[WebDisc] cleanupAllOffsetFiles: listFiles returned null for dir '{}'", cacheDir.getAbsolutePath());
                 return;
             }
             if (toDelete.length == 0) {
-                LOGGER.info("[WebDisc] cleanupAllOffsetFiles: no _off files found in dir '{}'", cacheDir.getAbsolutePath());
                 return;
             }
-            LOGGER.info("[WebDisc] cleanupAllOffsetFiles: found {} _off files to delete", toDelete.length);
             for (File f : toDelete) {
                 try {
                     boolean deleted = f.delete();
                     if (deleted) {
-                        LOGGER.info("[WebDisc] cleanupAllOffsetFiles: deleted temp offset file '{}'", f.getAbsolutePath());
                     } else {
-                        LOGGER.info("[WebDisc] cleanupAllOffsetFiles: FAILED to delete temp offset file '{}' (delete() returned false)", f.getAbsolutePath());
                     }
                 } catch (Throwable t) {
-                    LOGGER.info("[WebDisc] cleanupAllOffsetFiles: exception while deleting file '{}': {}", f.getAbsolutePath(), t.toString());
                 }
             }
 
             resetClientStates();
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] cleanupAllOffsetFiles: failed: {}", t.toString());
         }
     }
 
@@ -192,13 +178,10 @@ public final class WebDiscAudioHelper {
                 return;
             }
 
-            LOGGER.info("[WebDisc] cleanupCacheOnClientInit: start, dir='{}'", cacheDir.getAbsolutePath());
-
             cleanupAllOffsetFiles();
 
             File[] all = cacheDir.listFiles();
             if (all == null || all.length == 0) {
-                LOGGER.info("[WebDisc] cleanupCacheOnClientInit: cache empty after off-cleanup");
                 return;
             }
 
@@ -228,8 +211,6 @@ public final class WebDiscAudioHelper {
                     if (ageMillis > maxAgeMillis) {
                         if (f.delete()) {
                             totalBytes -= size;
-                            LOGGER.info("[WebDisc] cleanupCacheOnClientInit: deleted old file '{}' ({} bytes, age={} ms)",
-                                    f.getAbsolutePath(), size, ageMillis);
                         }
                     } else {
                         candidates.add(new FileInfo(f, ts, size));
@@ -247,7 +228,6 @@ public final class WebDiscAudioHelper {
             }
             totalBytes = recalculated;
 
-            LOGGER.info("[WebDisc] cleanupCacheOnClientInit: size after age-cleanup = {} bytes", totalBytes);
 
             if (totalBytes > MAX_CACHE_BYTES && !candidates.isEmpty()) {
                 candidates.sort(Comparator.comparingLong(fi -> fi.timestamp));
@@ -259,16 +239,12 @@ public final class WebDiscAudioHelper {
                     try {
                         if (f.delete()) {
                             totalBytes -= sz;
-                            LOGGER.info("[WebDisc] cleanupCacheOnClientInit: deleted for size limit '{}' ({} bytes), total now {}",
-                                    f.getAbsolutePath(), sz, totalBytes);
                         }
                     } catch (Throwable ignored) {}
                 }
             }
 
-            LOGGER.info("[WebDisc] cleanupCacheOnClientInit: finished, final size = {} bytes", totalBytes);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] cleanupCacheOnClientInit: failed: {}", t.toString());
         }
     }
 
@@ -474,7 +450,6 @@ public final class WebDiscAudioHelper {
                     } catch (Throwable ignored) {}
                 }
             } catch (Throwable t) {
-                LOGGER.info("[WebDisc] scheduleOffsetCut: ffmpeg failed for key='{}', offKey='{}': {}", urlKey, offKey, t.toString());
             }
         }, Util.backgroundExecutor());
     }
@@ -508,7 +483,6 @@ public final class WebDiscAudioHelper {
                 return st == OffsetState.READY;
             }
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] isOffsetReady: failed for offKey='{}': {}", offKey, t.toString());
             return true;
         }
     }
@@ -542,7 +516,6 @@ public final class WebDiscAudioHelper {
                 return st == OffsetState.PENDING;
             }
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc] isOffsetPending: failed for offKey='{}': {}", offKey, t.toString());
             return false;
         }
     }

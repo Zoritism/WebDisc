@@ -10,14 +10,6 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-/**
- * S2C: команда клиенту начать/остановить проигрывание webdisc-а в точке или от entity.
- * Пустой url означает "остановить".
- *
- * elapsedTicks / discLengthTicks:
- * - используются для первого старта трека (точный seek);
- * - для последующей периодической ресинхронизации используется WebdiscJukeboxSyncMessage.
- */
 public record PlayWebDiscMessage(
         BlockPos pos,
         String url,
@@ -27,11 +19,7 @@ public record PlayWebDiscMessage(
         int discLengthTicks
 ) {
 
-    /**
-     * Упрощённый конструктор для ванильного джукбокса / старых вызовов:
-     * без uuid и без таймингов.
-     */
-    public PlayWebDiscMessage(BlockPos pos, String url) {
+        public PlayWebDiscMessage(BlockPos pos, String url) {
         this(pos, url, Util.NIL_UUID, -1, 0, 0);
     }
 

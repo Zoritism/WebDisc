@@ -4,16 +4,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Краткоживущий реестр статуса текущего трека по storageUuid:
- * - true  = в этом слоте сейчас играет WebDisc (WebDiscItem с finalized=true);
- * - false = в этом слоте сейчас играет НЕ-webdisc (любой RecordItem/плейсхолдер).
- *
- * Заполняется на сервере в MixinJukeboxUpgradeWrapper.playDisc(),
- * читается на клиенте в MixinStorageSoundHandlerPlay.playStorageSound().
- *
- * Обязателен сброс при stopStorageSound() и при SoundFinishedNotificationMessage.
- */
 public final class WebDiscPlaybackRegistry {
 
     private WebDiscPlaybackRegistry() {}

@@ -1,10 +1,7 @@
 package com.zoritism.webdisc.client.audio;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.util.WebHashing;
 import net.minecraft.client.Minecraft;
-import org.slf4j.Logger;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -16,8 +13,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AudioHandlerClient {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final Map<String, CompletableFuture<Boolean>> DOWNLOAD_TASKS = new ConcurrentHashMap<>();
     private static final Map<String, DownloadContext> ACTIVE_CONTEXTS = new ConcurrentHashMap<>();
@@ -63,20 +58,11 @@ public class AudioHandlerClient {
         }
     }
 
-    /**
-     * Полное удаление всех путей по префиксу key, включая итоговый key.ogg.
-     * Использовать для "отменить" (cancel).
-     */
     public void deleteAllFilesForUrl(String url) {
         String key = keyForUrl(url);
         deleteAllByPrefix(key, null);
     }
 
-    /**
-     * Cleanup после успешной финализации:
-     * удаляет все пути в audio_cache, начинающиеся с key, кроме key.ogg.
-     * Удаляет и файлы, и директории (рекурсивно).
-     */
     public void cleanupTempFilesAfterFinalize(String url) {
         String key = keyForUrl(url);
         deleteAllByPrefix(key, key + ".ogg");
@@ -116,7 +102,6 @@ public class AudioHandlerClient {
         }
 
         try {
-            //noinspection ResultOfMethodCallIgnored
             f.delete();
         } catch (Throwable ignored) {
         }
@@ -129,12 +114,6 @@ public class AudioHandlerClient {
         } catch (Throwable ignored) {}
     }
 
-    /**
-     * Идемпотентное скачивание/конвертация URL -> .ogg.
-     * Для одного key в любой момент времени существует максимум одна реальная задача.
-     *
-     * ВАЖНО: тут cleanup не делаем — по твоему требованию cleanup только после finalize.
-     */
     public CompletableFuture<Boolean> downloadAsOgg(String url) {
         String key = keyForUrl(url);
 
@@ -154,7 +133,6 @@ public class AudioHandlerClient {
                 Path dir = baseDir();
                 File dirFile = dir.toFile();
                 if (!dirFile.exists() && !dirFile.mkdirs()) {
-                    LOGGER.info("[WebDisc] AudioHandlerClient: failed to create dir '{}'", dir.toAbsolutePath());
                 }
 
                 File oggOut = dir.resolve(key + ".ogg").toFile();
@@ -175,7 +153,6 @@ public class AudioHandlerClient {
                     );
                 } catch (Throwable t) {
                     if (ctx.cancelled) return false;
-                    LOGGER.info("[WebDisc] AudioHandlerClient.downloadAsOgg: yt-dlp failed: {}", t.toString());
                     return false;
                 }
 
@@ -197,7 +174,6 @@ public class AudioHandlerClient {
                     );
                 } catch (Throwable t) {
                     if (ctx.cancelled) return false;
-                    LOGGER.info("[WebDisc] AudioHandlerClient.downloadAsOgg: ffmpeg failed: {}", t.toString());
                     return false;
                 }
 
@@ -205,7 +181,6 @@ public class AudioHandlerClient {
                 return oggOut.exists();
             } catch (Throwable t) {
                 if (ctx.cancelled) return false;
-                LOGGER.info("[WebDisc] Audio download/transcode failed: {}", t.toString());
                 return false;
             } finally {
                 ACTIVE_CONTEXTS.remove(key);
@@ -241,7 +216,6 @@ public class AudioHandlerClient {
         if (ctx.cancelled) return "";
         if (code != 0) {
             String err = YoutubeDLHelper.readAll(proc.getErrorStream());
-            LOGGER.info("[WebDisc] yt-dlp stderr: {}", err);
             throw new RuntimeException("yt-dlp exit code " + code);
         }
         return out.trim();
@@ -261,7 +235,6 @@ public class AudioHandlerClient {
         if (ctx.cancelled) return;
         if (code != 0) {
             String err = FFmpegHelper.readAll(proc.getErrorStream());
-            LOGGER.info("[WebDisc] ffmpeg stderr: {}", err);
             throw new RuntimeException("ffmpeg exited with code " + code);
         }
     }

@@ -1,6 +1,5 @@
 package com.zoritism.webdisc.mixin.webdisc;
 
-import com.mojang.logging.LogUtils;
 import com.zoritism.webdisc.WebDiscPlaybackRegistry;
 import com.zoritism.webdisc.item.WebDiscItem;
 import com.zoritism.webdisc.network.NetworkHandler;
@@ -18,7 +17,6 @@ import net.p3pp3rf1y.sophisticatedcore.upgrades.UpgradeWrapperBase;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.JukeboxUpgradeItem;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.JukeboxUpgradeWrapper;
 import net.p3pp3rf1y.sophisticatedcore.util.NBTHelper;
-import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,8 +29,6 @@ import java.util.function.Consumer;
 
 @Mixin(value = JukeboxUpgradeWrapper.class, remap = false)
 public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<JukeboxUpgradeWrapper, JukeboxUpgradeItem> {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     @Shadow
     public abstract ItemStack getDisc();
@@ -59,7 +55,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
         try {
             wrapper = (JukeboxUpgradeWrapper) (Object) this;
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: failed to cast self: {}", t.toString());
             return;
         }
 
@@ -67,7 +62,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
         try {
             disc = wrapper.getDisc();
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: getDisc() threw: {}", t.toString());
             return;
         }
 
@@ -75,7 +69,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
         try {
             storageUuid = storageWrapper.getContentsUuid().orElse(null);
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: getContentsUuid() threw: {}", t.toString());
         }
 
         if (disc == null || disc.isEmpty()) {
@@ -83,7 +76,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
             return;
         }
 
-        // --- НЕ-webdisc ---
         if (!(disc.getItem() instanceof WebDiscItem)) {
             markNonWebDiscSafe(storageUuid);
 
@@ -109,8 +101,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
                                     new PlayWebDiscMessage(sendPos, "", storageUuid, entityId, 0, 0)
                             );
                         } catch (Throwable t) {
-                            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: failed to send STOP PlayWebDiscMessage for non-webdisc slot: {}",
-                                    t.toString());
                         }
                     }
                 }
@@ -150,7 +140,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
             NBTHelper.setLong(upgrade, "discLength", webTicks);
             save();
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: failed to update discLength/discFinishTime: {}", t.toString());
         }
 
         markWebDiscSafe(storageUuid);
@@ -160,7 +149,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
             try {
                 rawPos = entityPlaying.blockPosition();
             } catch (Throwable t) {
-                LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: entityPlaying.blockPosition() threw: {}", t.toString());
             }
         }
         if (rawPos == null) {
@@ -174,7 +162,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
                     new WebdiscJukeboxTimerMessage(storageUuid, webTicks)
             );
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: failed to send WebdiscJukeboxTimerMessage: {}", t.toString());
         }
 
         int elapsedTicks;
@@ -190,7 +177,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
 
             elapsedTicks = (int) Math.max(0L, Math.min(Integer.MAX_VALUE, rawElapsed));
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: failed to compute elapsedTicks: {}", t.toString());
             elapsedTicks = 0;
         }
 
@@ -201,7 +187,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
                     new PlayWebDiscMessage(sendPos, url, storageUuid, entityId, elapsedTicks, webTicks)
             );
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: failed to send PlayWebDiscMessage: {}", t.toString());
         }
 
         try {
@@ -217,7 +202,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
                     discFinishTime
             );
         } catch (Throwable t) {
-            LOGGER.info("[WebDisc][JukeboxUpgrade] playDisc TAIL: failed to register in WebDiscJukeboxSyncRegistry: {}", t.toString());
         }
     }
 

@@ -10,15 +10,6 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-/**
- * C2S: клиент завершил запись диска и сообщает:
- * - URL
- * - длительность в тиках
- *
- * Сервер:
- * - проверяет, что диск в руке, имеет тот же URL;
- * - проставляет webdisc:finalized=true, webdisc:durationTicks и webdisc:bucketTicks.
- */
 public record FinalizeRecordMessage(String url, int lengthTicks) {
 
     public static void encode(FinalizeRecordMessage msg, FriendlyByteBuf buf) {

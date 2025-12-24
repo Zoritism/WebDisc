@@ -16,10 +16,8 @@ public final class WebDiscMod {
     public WebDiscMod() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
-        // Network
         NetworkHandler.register();
 
-        // Registries
         WebDiscSounds.SOUND_EVENTS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModTabs.TABS.register(modEventBus);
