@@ -1,16 +1,19 @@
 package com.zoritism.webdisc.mixin.webdisc;
 
 import com.zoritism.webdisc.client.WebDiscClientHandler;
+import com.zoritism.webdisc.client.WebDiscSoundBridge;
 import com.zoritism.webdisc.client.audio.WebDiscAudioHelper;
+import com.zoritism.webdisc.client.audio.sound.WebFileSound;
 import net.minecraft.client.sounds.AudioStream;
 import net.minecraft.client.sounds.SoundBufferLibrary;
 import net.minecraft.resources.ResourceLocation;
-
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Mixin(SoundBufferLibrary.class)
@@ -46,11 +49,28 @@ public abstract class MixinSoundBufferLibrary {
         }
         String urlKey = rest;
 
-        int offsetMs;
+        // Ищем uuid по текущим активным звукам (это то же что использует WebDiscSoundBridge).
+        UUID matchedUuid = null;
         try {
-            offsetMs = WebDiscClientHandler.getOffsetForUrlKey(urlKey);
-        } catch (Throwable t) {
-            offsetMs = 0;
+            Map<UUID, WebFileSound> map = WebDiscClientHandler.getSoundsByUuidView();
+            for (Map.Entry<UUID, WebFileSound> e : map.entrySet()) {
+                UUID uuid = e.getKey();
+                WebFileSound s = e.getValue();
+                if (uuid == null || s == null) continue;
+                if (urlKey.equals(s.getUrlKey())) {
+                    matchedUuid = uuid;
+                    break;
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        int offsetMs = 0;
+        if (matchedUuid != null) {
+            try {
+                offsetMs = WebDiscClientHandler.getOffsetForStorageUuid(matchedUuid, urlKey);
+            } catch (Throwable ignored) {
+                offsetMs = 0;
+            }
         }
 
         CompletableFuture<AudioStream> custom = WebDiscAudioHelper.getStream(id, repeatInstantly, offsetMs);

@@ -35,7 +35,9 @@ public final class WebDiscClientHandler {
     private static final Map<UUID, Integer> startElapsedTicksByUuid = new HashMap<>();
     private static final Map<UUID, Integer> discLengthTicksByUuid = new HashMap<>();
 
-    private static final Map<String, Integer> offsetsByUrlKey = new HashMap<>();
+    // offset должен жить на уровне "uuid-сессии", а не глобально по urlKey,
+    // иначе он протекает между треками и даёт старт "с прошлого off".
+    private static final Map<UUID, Integer> offsetMsByUuid = new HashMap<>();
 
     private static final Set<UUID> validListeners = new HashSet<>();
 
@@ -89,11 +91,31 @@ public final class WebDiscClientHandler {
         return Collections.unmodifiableMap(soundsByUuid);
     }
 
-    public static int getOffsetForUrlKey(String urlKey) {
+    public static int getOffsetForStorageUuid(UUID storageUuid, String urlKey) {
+        if (storageUuid == null || storageUuid.equals(Util.NIL_UUID)) {
+            return 0;
+        }
+
+        WebFileSound s = soundsByUuid.get(storageUuid);
+        if (s == null) {
+            return 0;
+        }
+
         if (urlKey == null || urlKey.isEmpty()) {
             return 0;
         }
-        Integer v = offsetsByUrlKey.get(urlKey);
+
+        // ВАЖНО: offset отдаём только если это действительно тот же urlKey, что у текущего звука.
+        // Иначе будет протекание offset между треками.
+        try {
+            if (!urlKey.equals(s.getUrlKey())) {
+                return 0;
+            }
+        } catch (Throwable ignored) {
+            return 0;
+        }
+
+        Integer v = offsetMsByUuid.get(storageUuid);
         return v != null ? v : 0;
     }
 
@@ -166,7 +188,7 @@ public final class WebDiscClientHandler {
         startGameTimeTicksByUuid.clear();
         startElapsedTicksByUuid.clear();
         discLengthTicksByUuid.clear();
-        offsetsByUrlKey.clear();
+        offsetMsByUuid.clear();
         sessions.clear();
         validListeners.clear();
         lastSeenClientTicksByUuid.clear();
@@ -223,11 +245,6 @@ public final class WebDiscClientHandler {
         Minecraft mc = Minecraft.getInstance();
         WebFileSound existing = soundsByUuid.remove(uuid);
 
-        String removedUrlKey = null;
-        if (existing != null) {
-            removedUrlKey = existing.getUrlKey();
-        }
-
         if (existing != null && mc != null) {
             try {
                 mc.getSoundManager().stop(existing);
@@ -237,10 +254,7 @@ public final class WebDiscClientHandler {
             } catch (Throwable ignored) {}
         }
 
-        if (removedUrlKey != null && !removedUrlKey.isEmpty()) {
-            offsetsByUrlKey.remove(removedUrlKey);
-            logger.info("[WebDisc] clearByUuid removed offsetByUrlKey urlKey={}", removedUrlKey);
-        }
+        offsetMsByUuid.remove(uuid);
 
         startGameTimeTicksByUuid.remove(uuid);
         startElapsedTicksByUuid.remove(uuid);
@@ -352,6 +366,11 @@ public final class WebDiscClientHandler {
 
         String newKey = WebHashing.sha256(minecraftify(url));
 
+        // IMPORTANT: если сервер прислал elapsed=0, это новый старт трека -> сбрасываем офф сессии.
+        if (hasUuid && safeElapsed == 0) {
+            offsetMsByUuid.remove(uuid);
+        }
+
         if (hasUuid) {
             clearValidListener(uuid);
 
@@ -360,13 +379,15 @@ public final class WebDiscClientHandler {
                 try {
                     mc.getSoundManager().stop(existing);
                 } catch (Throwable ignored) {}
+
                 String oldKey = existing.getUrlKey();
                 if (!oldKey.equals(newKey)) {
+                    // смена трека под тем же uuid -> чистим _off старого трека и сбрасываем offset
                     try {
                         WebDiscAudioHelper.cleanupOffsetFilesForKey(oldKey);
                     } catch (Throwable ignored) {}
+                    offsetMsByUuid.remove(uuid);
                 }
-                offsetsByUrlKey.remove(oldKey);
             }
         } else if (center != null) {
             WebFileSound existing = soundsByPos.remove(center);
@@ -440,7 +461,13 @@ public final class WebDiscClientHandler {
 
                 int offsetMs2 = requestedOffsetMs;
                 if (hasUuid && finalSs != null) {
-                    if (finalSs.offState == OffState.WAITING_FOR_OFF || finalSs.offState == OffState.USING_OFF) {
+                    // если elapsed=0 -> строго начинаем с 0, не наследуем прошлый off
+                    if (finalSafeElapsed == 0) {
+                        offsetMs2 = 0;
+                        finalSs.offOffsetMs = 0;
+                        finalSs.offState = OffState.NONE;
+                        finalSs.pendingInitialSeek = false;
+                    } else if (finalSs.offState == OffState.WAITING_FOR_OFF || finalSs.offState == OffState.USING_OFF) {
                         offsetMs2 = finalSs.offOffsetMs;
                     } else {
                         finalSs.offOffsetMs = requestedOffsetMs;
@@ -448,7 +475,9 @@ public final class WebDiscClientHandler {
                     }
                 }
 
-                offsetsByUrlKey.put(urlKey2, offsetMs2);
+                if (hasUuid) {
+                    offsetMsByUuid.put(uuid, offsetMs2);
+                }
 
                 logger.info("[WebDisc] play (after download) uuid={} urlKey={} offsetMs={} forceVanilla={}", uuid, urlKey2, offsetMs2, finalForceVanillaPlayback);
 
@@ -506,7 +535,12 @@ public final class WebDiscClientHandler {
         int offsetMs = requestedOffsetMs;
 
         if (hasUuid && ss != null) {
-            if (ss.offState == OffState.WAITING_FOR_OFF || ss.offState == OffState.USING_OFF) {
+            if (safeElapsed == 0) {
+                offsetMs = 0;
+                ss.offOffsetMs = 0;
+                ss.offState = OffState.NONE;
+                ss.pendingInitialSeek = false;
+            } else if (ss.offState == OffState.WAITING_FOR_OFF || ss.offState == OffState.USING_OFF) {
                 offsetMs = ss.offOffsetMs;
             } else {
                 ss.offOffsetMs = requestedOffsetMs;
@@ -514,7 +548,9 @@ public final class WebDiscClientHandler {
             }
         }
 
-        offsetsByUrlKey.put(urlKey, offsetMs);
+        if (hasUuid) {
+            offsetMsByUuid.put(uuid, offsetMs);
+        }
 
         logger.info("[WebDisc] play start uuid={} urlKey={} offsetMs={} forceVanilla={}", uuid, urlKey, offsetMs, forceVanillaPlayback);
 
