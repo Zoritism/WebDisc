@@ -11,6 +11,8 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.StorageSoundHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,6 +23,8 @@ import java.util.Set;
 import java.util.UUID;
 
 public final class WebDiscClientHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger("WebDisc");
 
     private WebDiscClientHandler() {}
 
@@ -127,8 +131,7 @@ public final class WebDiscClientHandler {
     }
 
     public static void resetAll() {
-        try {
-        } catch (Throwable ignored) {}
+        logger.info("[WebDisc] resetAll called");
 
         Minecraft mc = Minecraft.getInstance();
 
@@ -171,6 +174,8 @@ public final class WebDiscClientHandler {
 
         clientReadyForSync = false;
         clientReadyFromGameTime = 0L;
+
+        logger.info("[WebDisc] resetAll completed");
     }
 
     public static boolean isSoundActuallyPlaying(UUID uuid) {
@@ -201,41 +206,53 @@ public final class WebDiscClientHandler {
     }
 
     public static void clearByUuid(UUID uuid) {
+        clearByUuid(uuid, "unknown");
+    }
+
+    public static void clearByUuid(UUID uuid, String reason) {
         if (uuid == null) {
             return;
         }
+
+        logger.info("[WebDisc] clearByUuid uuid={} reason={}", uuid, reason);
+
         clearValidListener(uuid);
         lastSeenClientTicksByUuid.remove(uuid);
         lastStartClientGameTimeByUuid.remove(uuid);
 
         Minecraft mc = Minecraft.getInstance();
         WebFileSound existing = soundsByUuid.remove(uuid);
+
+        String removedUrlKey = null;
+        if (existing != null) {
+            removedUrlKey = existing.getUrlKey();
+        }
+
         if (existing != null && mc != null) {
             try {
                 mc.getSoundManager().stop(existing);
-            } catch (Throwable t) {
-            }
+            } catch (Throwable ignored) {}
             try {
                 WebDiscAudioHelper.cleanupOffsetFilesForKey(existing.getUrlKey());
             } catch (Throwable ignored) {}
+        }
+
+        if (removedUrlKey != null && !removedUrlKey.isEmpty()) {
+            offsetsByUrlKey.remove(removedUrlKey);
+            logger.info("[WebDisc] clearByUuid removed offsetByUrlKey urlKey={}", removedUrlKey);
         }
 
         startGameTimeTicksByUuid.remove(uuid);
         startElapsedTicksByUuid.remove(uuid);
         discLengthTicksByUuid.remove(uuid);
 
-        SessionState ss = sessions.remove(uuid);
-        if (ss != null && ss.urlKey != null && !ss.urlKey.isEmpty()) {
-            offsetsByUrlKey.remove(ss.urlKey);
-        }
+        sessions.remove(uuid);
     }
 
     public static void onStorageSoundFinished(UUID storageUuid) {
         if (storageUuid == null) return;
-        try {
-            clearByUuid(storageUuid);
-        } catch (Throwable t) {
-        }
+        logger.info("[WebDisc] onStorageSoundFinished uuid={}", storageUuid);
+        clearByUuid(storageUuid, "onStorageSoundFinished");
     }
 
     private static boolean hasActiveUuid(UUID uuid) {
@@ -257,6 +274,8 @@ public final class WebDiscClientHandler {
         startGameTimeTicksByUuid.put(uuid, now);
         startElapsedTicksByUuid.put(uuid, safeStartElapsed);
         discLengthTicksByUuid.put(uuid, safeLen);
+
+        logger.info("[WebDisc] registerTiming uuid={} now={} startElapsed={} len={}", uuid, now, safeStartElapsed, safeLen);
     }
 
     public static int estimateClientElapsedTicks(UUID uuid) {
@@ -298,8 +317,6 @@ public final class WebDiscClientHandler {
         }
 
         boolean hasUuid = uuid != null && !uuid.equals(Util.NIL_UUID);
-
-
         boolean forceVanillaPlayback = entityId < 0;
 
         Entity entity = (entityId >= 0) ? level.getEntity(entityId) : null;
@@ -309,41 +326,25 @@ public final class WebDiscClientHandler {
         int requestedOffsetMs = safeElapsed * 50;
         int safeLen = Math.max(1, discLengthTicks);
 
-        if (url == null || url.isEmpty()) {
-            if (hasUuid) {
-                clearValidListener(uuid);
-                lastSeenClientTicksByUuid.remove(uuid);
-                lastStartClientGameTimeByUuid.remove(uuid);
+        logger.info(
+                "[WebDisc] play request uuid={} entityId={} entityBound={} forceVanilla={} elapsedTicks={} lenTicks={} urlPresent={}",
+                uuid, entityId, entityBound, forceVanillaPlayback, safeElapsed, safeLen, (url != null && !url.isEmpty())
+        );
 
-                WebFileSound existing = soundsByUuid.remove(uuid);
-                if (existing != null) {
-                    try {
-                        mc.getSoundManager().stop(existing);
-                    } catch (Throwable t) {
-                    }
-                    try {
-                        WebDiscAudioHelper.cleanupOffsetFilesForKey(existing.getUrlKey());
-                    } catch (Throwable ignored) {}
-                }
+        if (url == null || url.isEmpty()) {
+            logger.info("[WebDisc] play url empty -> stopping uuid={} pos={}", uuid, center);
+
+            if (hasUuid) {
+                clearByUuid(uuid, "play_emptyUrl");
             } else if (center != null) {
                 WebFileSound existing = soundsByPos.remove(center);
                 if (existing != null) {
                     try {
                         mc.getSoundManager().stop(existing);
-                    } catch (Throwable t) {
-                    }
+                    } catch (Throwable ignored) {}
                     try {
                         WebDiscAudioHelper.cleanupOffsetFilesForKey(existing.getUrlKey());
                     } catch (Throwable ignored) {}
-                }
-            }
-            if (hasUuid) {
-                startGameTimeTicksByUuid.remove(uuid);
-                startElapsedTicksByUuid.remove(uuid);
-                discLengthTicksByUuid.remove(uuid);
-                SessionState ss = sessions.remove(uuid);
-                if (ss != null && ss.urlKey != null && !ss.urlKey.isEmpty()) {
-                    offsetsByUrlKey.remove(ss.urlKey);
                 }
             }
             return;
@@ -358,22 +359,21 @@ public final class WebDiscClientHandler {
             if (existing != null) {
                 try {
                     mc.getSoundManager().stop(existing);
-                } catch (Throwable t) {
-                }
+                } catch (Throwable ignored) {}
                 String oldKey = existing.getUrlKey();
                 if (!oldKey.equals(newKey)) {
                     try {
                         WebDiscAudioHelper.cleanupOffsetFilesForKey(oldKey);
                     } catch (Throwable ignored) {}
                 }
+                offsetsByUrlKey.remove(oldKey);
             }
         } else if (center != null) {
             WebFileSound existing = soundsByPos.remove(center);
             if (existing != null) {
                 try {
                     mc.getSoundManager().stop(existing);
-                } catch (Throwable t) {
-                }
+                } catch (Throwable ignored) {}
                 String oldKey = existing.getUrlKey();
                 if (!oldKey.equals(newKey)) {
                     try {
@@ -393,7 +393,6 @@ public final class WebDiscClientHandler {
             ss.urlKey = newKey;
             ss.discLengthTicks = safeLen;
             ss.lastSyncClientGameTime = level.getGameTime();
-
             lastSeenClientTicksByUuid.put(uuid, level.getGameTime());
         }
 
@@ -401,6 +400,8 @@ public final class WebDiscClientHandler {
         boolean has = handler.hasOgg(url);
 
         if (!has) {
+            logger.info("[WebDisc] play ogg missing -> download scheduled uuid={} urlKey={}", uuid, newKey);
+
             SessionState finalSs = ss;
             int finalSafeLen = safeLen;
             int finalSafeElapsed = safeElapsed;
@@ -412,6 +413,7 @@ public final class WebDiscClientHandler {
                     return;
                 }
                 if (!success) {
+                    logger.info("[WebDisc] download failed uuid={} urlKey={}", uuid, newKey);
                     return;
                 }
 
@@ -448,6 +450,8 @@ public final class WebDiscClientHandler {
 
                 offsetsByUrlKey.put(urlKey2, offsetMs2);
 
+                logger.info("[WebDisc] play (after download) uuid={} urlKey={} offsetMs={} forceVanilla={}", uuid, urlKey2, offsetMs2, finalForceVanillaPlayback);
+
                 if (hasUuid) {
                     soundsByUuid.put(uuid, fs2);
 
@@ -457,8 +461,7 @@ public final class WebDiscClientHandler {
                         } else {
                             StorageSoundHandler.playStorageSound(uuid, fs2);
                         }
-                    } catch (Throwable t) {
-                    }
+                    } catch (Throwable ignored) {}
 
                     registerTiming(uuid, finalSafeElapsed, finalSafeLen);
                     noteStarted(uuid, innerMc.level);
@@ -481,8 +484,7 @@ public final class WebDiscClientHandler {
                     soundsByPos.put(center, fs2);
                     try {
                         innerMc.getSoundManager().play(fs2);
-                    } catch (Throwable t) {
-                    }
+                    } catch (Throwable ignored) {}
                 }
             });
             return;
@@ -514,6 +516,8 @@ public final class WebDiscClientHandler {
 
         offsetsByUrlKey.put(urlKey, offsetMs);
 
+        logger.info("[WebDisc] play start uuid={} urlKey={} offsetMs={} forceVanilla={}", uuid, urlKey, offsetMs, forceVanillaPlayback);
+
         if (hasUuid) {
             soundsByUuid.put(uuid, fs);
 
@@ -523,8 +527,7 @@ public final class WebDiscClientHandler {
                 } else {
                     StorageSoundHandler.playStorageSound(uuid, fs);
                 }
-            } catch (Throwable t) {
-            }
+            } catch (Throwable ignored) {}
 
             registerTiming(uuid, safeElapsed, safeLen);
             noteStarted(uuid, level);
@@ -547,8 +550,7 @@ public final class WebDiscClientHandler {
             soundsByPos.put(center, fs);
             try {
                 mc.getSoundManager().play(fs);
-            } catch (Throwable t) {
-            }
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -584,8 +586,19 @@ public final class WebDiscClientHandler {
                                           int deltaTicks,
                                           SessionState ss,
                                           int discLengthTicks) {
-        try {
-        } catch (Throwable ignored) {}
+        logger.info(
+                "[WebDisc] resyncDecision reason={} uuid={} serverRemaining={} clientRemaining={} delta={} offState={} offMs={} pendingSeek={} offAttempts={} len={}",
+                reason,
+                uuid,
+                serverRemainingTicks,
+                clientRemainingTicks,
+                deltaTicks,
+                (ss != null ? ss.offState : null),
+                (ss != null ? ss.offOffsetMs : -1),
+                (ss != null && ss.pendingInitialSeek),
+                (ss != null ? ss.offAttempts : -1),
+                discLengthTicks
+        );
     }
 
     public static void onSync(
@@ -630,24 +643,33 @@ public final class WebDiscClientHandler {
 
         tickCleanupOnSync(storageUuid, ss);
 
+        boolean activeLocal = hasActiveUuid(storageUuid);
+        boolean playingLocal = isSoundActuallyPlaying(storageUuid);
+        int clientElapsed = estimateClientElapsedTicks(storageUuid);
+
+        logger.info(
+                "[WebDisc] onSync uuid={} entityId={} serverRemaining={} len={} finish={} localHas={} localPlaying={} clientElapsed={}",
+                storageUuid, entityId, safeServerRemaining, safeLen, serverFinishGameTimeTicks, activeLocal, playingLocal, clientElapsed
+        );
+
         if (!isClientReadyForSync(level)) {
+            logger.info("[WebDisc] onSync client not ready -> skip sync uuid={}", storageUuid);
             try {
                 AudioHandlerClient handler = new AudioHandlerClient();
                 if (!handler.hasOgg(url)) {
                     handler.downloadAsOgg(url);
                 }
-            } catch (Throwable t) {
-            }
+            } catch (Throwable ignored) {}
             return;
         }
 
         try {
-            if (hasActiveUuid(storageUuid) && isSoundActuallyPlaying(storageUuid)) {
+            if (activeLocal && playingLocal) {
                 markValidListener(storageUuid);
             }
         } catch (Throwable ignored) {}
 
-        boolean hasLocal = hasActiveUuid(storageUuid) && startGameTimeTicksByUuid.containsKey(storageUuid);
+        boolean hasLocal = activeLocal && startGameTimeTicksByUuid.containsKey(storageUuid);
 
         if (!hasLocal) {
             int serverElapsed = safeLen - safeServerRemaining;
@@ -663,8 +685,9 @@ public final class WebDiscClientHandler {
             return;
         }
 
-        if (!isSoundActuallyPlaying(storageUuid)) {
+        if (!playingLocal) {
             if (isWithinStartGrace(storageUuid, nowClientTicks)) {
+                logger.info("[WebDisc] onSync local not playing but within start grace uuid={}", storageUuid);
                 return;
             }
 
@@ -738,6 +761,7 @@ public final class WebDiscClientHandler {
             }
 
             if (nowMs - ss.offRequestTimeMs > OFF_WAIT_TIMEOUT_MS) {
+                logger.info("[WebDisc] onSync waitingForOff timed out uuid={} offMs={}", storageUuid, ss.offOffsetMs);
                 ss.offState = OffState.GAVE_UP;
                 ss.pendingInitialSeek = false;
                 ss.offAttempts++;
@@ -801,7 +825,8 @@ public final class WebDiscClientHandler {
 
             long age = nowClientTicks - lastSeen;
             if (age > INACTIVE_TTL_TICKS) {
-                clearByUuid(uuid);
+                logger.info("[WebDisc] cleanupInactiveSoundsByTtl clearing uuid={} ageTicks={}", uuid, age);
+                clearByUuid(uuid, "ttl_cleanup");
             }
         }
     }
@@ -812,7 +837,11 @@ public final class WebDiscClientHandler {
 
         int clientElapsed = estimateClientElapsedTicks(uuid);
         if (clientElapsed >= 0 && clientElapsed > ss.discLengthTicks + LENGTH_OVERFLOW_MARGIN_TICKS) {
-            clearByUuid(uuid);
+            logger.info(
+                    "[WebDisc] tickCleanupOnSync overflow -> clearing uuid={} clientElapsed={} len={} margin={}",
+                    uuid, clientElapsed, ss.discLengthTicks, LENGTH_OVERFLOW_MARGIN_TICKS
+            );
+            clearByUuid(uuid, "overflow_cleanup");
         }
     }
 
@@ -829,6 +858,8 @@ public final class WebDiscClientHandler {
         startGameTimeTicksByUuid.put(uuid, now);
         startElapsedTicksByUuid.put(uuid, safeElapsed);
         discLengthTicksByUuid.put(uuid, safeLen);
+
+        logger.info("[WebDisc] updateTimingWithoutRestart uuid={} now={} elapsed={} len={}", uuid, now, safeElapsed, safeLen);
     }
 
     private static String minecraftify(String url) {

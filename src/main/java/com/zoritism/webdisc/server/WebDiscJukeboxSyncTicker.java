@@ -7,12 +7,16 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class WebDiscJukeboxSyncTicker {
+
+    private static final Logger logger = LoggerFactory.getLogger("WebDisc");
 
     private static final int SYNC_INTERVAL_TICKS = 40;
 
@@ -47,14 +51,14 @@ public final class WebDiscJukeboxSyncTicker {
             long start = e.startGameTimeTicks;
             long life = now - start;
             if (life > WebDiscJukeboxSyncRegistry.MAX_LIFETIME_TICKS) {
-                try {
-                } catch (Throwable ignored) {}
+                logger.info("[WebDisc] server sync TTL expired uuid={} lifeTicks={} -> removing", uuid, life);
                 WebDiscJukeboxSyncRegistry.remove(uuid);
                 continue;
             }
 
             int elapsedTicks = computeElapsedTicks(serverLevel, e);
             if (elapsedTicks < 0) {
+                logger.info("[WebDisc] server sync computeElapsedTicks failed uuid={}", uuid);
                 continue;
             }
 
@@ -62,6 +66,11 @@ public final class WebDiscJukeboxSyncTicker {
             int remainingTicks = discLength - elapsedTicks;
             if (remainingTicks < 0) remainingTicks = 0;
             if (remainingTicks > discLength) remainingTicks = discLength;
+
+            logger.info(
+                    "[WebDisc] server sync uuid={} pos={} entityId={} elapsed={} remaining={} len={} finish={}",
+                    uuid, e.pos, e.entityId, elapsedTicks, remainingTicks, discLength, e.discFinishGameTimeTicks
+            );
 
             try {
                 WebdiscJukeboxSyncMessage msg = new WebdiscJukeboxSyncMessage(
@@ -78,8 +87,7 @@ public final class WebDiscJukeboxSyncTicker {
                         msg
                 );
             } catch (Throwable t) {
-                try {
-                } catch (Throwable ignored) {}
+                logger.info("[WebDisc] server sync send failed uuid={} err={}", uuid, t.toString());
             }
         }
     }
@@ -95,8 +103,7 @@ public final class WebDiscJukeboxSyncTicker {
             if (dtClamped > discLength) dtClamped = discLength;
             return (int) dtClamped;
         } catch (Throwable t) {
-            try {
-            } catch (Throwable ignored) {}
+            logger.info("[WebDisc] computeElapsedTicks error err={}", t.toString());
             return -1;
         }
     }

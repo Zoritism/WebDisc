@@ -6,6 +6,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -19,6 +21,8 @@ public record WebdiscJukeboxSyncMessage(
         int discLengthTicks,
         long finishGameTimeTicks
 ) {
+
+    private static final Logger logger = LoggerFactory.getLogger("WebDisc");
 
     public static void encode(WebdiscJukeboxSyncMessage msg, FriendlyByteBuf buf) {
         buf.writeUUID(msg.storageUuid);
@@ -54,10 +58,18 @@ public record WebdiscJukeboxSyncMessage(
             long serverFinish = msg.finishGameTimeTicks();
             Vec3 center = msg.pos().getCenter();
 
+            String playerName = "UNKNOWN";
             try {
                 Minecraft mc = Minecraft.getInstance();
-                String playerName = (mc != null && mc.player != null) ? mc.player.getGameProfile().getName() : "UNKNOWN";
+                playerName = (mc != null && mc.player != null) ? mc.player.getGameProfile().getName() : "UNKNOWN";
             } catch (Throwable ignored) {}
+
+            logger.info(
+                    "[WebDisc] Sync recv player={} uuid={} remaining={} len={} finish={} urlPresent={} entityId={}",
+                    playerName, uuid, serverRemaining, discLength, serverFinish,
+                    msg.url() != null && !msg.url().isEmpty(),
+                    msg.entityId()
+            );
 
             WebDiscClientHandler.onSync(
                     uuid,

@@ -14,9 +14,10 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.network.PacketDistributor;
 import net.p3pp3rf1y.sophisticatedcore.api.IStorageWrapper;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.UpgradeWrapperBase;
-import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.JukeboxUpgradeItem;
 import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.JukeboxUpgradeWrapper;
 import net.p3pp3rf1y.sophisticatedcore.util.NBTHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,7 +29,9 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 @Mixin(value = JukeboxUpgradeWrapper.class, remap = false)
-public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<JukeboxUpgradeWrapper, JukeboxUpgradeItem> {
+public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
+
+    private static final Logger logger = LoggerFactory.getLogger("WebDisc");
 
     @Shadow
     public abstract ItemStack getDisc();
@@ -45,7 +48,7 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
     @Nullable
     private BlockPos posPlaying;
 
-    protected MixinJukeboxUpgradeWrapper(IStorageWrapper storageWrapper, ItemStack upgrade, Consumer<ItemStack> upgradeSaveHandler) {
+    protected MixinJukeboxUpgradeWrapper(IStorageWrapper storageWrapper, ItemStack upgrade, Consumer upgradeSaveHandler) {
         super(storageWrapper, upgrade, upgradeSaveHandler);
     }
 
@@ -68,42 +71,22 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
         UUID storageUuid = null;
         try {
             storageUuid = storageWrapper.getContentsUuid().orElse(null);
-        } catch (Throwable t) {
-        }
+        } catch (Throwable ignored) {}
 
         if (disc == null || disc.isEmpty()) {
+            logger.info("[WebDisc] SC playDisc: empty disc storageUuid={}", storageUuid);
             markNonWebDiscSafe(null);
             return;
         }
 
         if (!(disc.getItem() instanceof WebDiscItem)) {
+            logger.info("[WebDisc] SC playDisc: non-webdisc disc item={} storageUuid={}", disc.getItem().getClass().getName(), storageUuid);
             markNonWebDiscSafe(storageUuid);
 
             if (storageUuid != null) {
                 try {
                     WebDiscJukeboxSyncRegistry.remove(storageUuid);
                 } catch (Throwable ignored) {}
-
-                Level playLevel = (entityPlaying != null) ? entityPlaying.level() : levelPlaying;
-                if (playLevel instanceof ServerLevel serverLevel) {
-                    BlockPos rawPos = posPlaying;
-                    if (rawPos == null && entityPlaying != null) {
-                        try {
-                            rawPos = entityPlaying.blockPosition();
-                        } catch (Throwable ignored) {}
-                    }
-                    if (rawPos != null) {
-                        final BlockPos sendPos = rawPos;
-                        int entityId = (entityPlaying != null) ? entityPlaying.getId() : -1;
-                        try {
-                            NetworkHandler.CHANNEL.send(
-                                    PacketDistributor.TRACKING_CHUNK.with(() -> serverLevel.getChunkAt(sendPos)),
-                                    new PlayWebDiscMessage(sendPos, "", storageUuid, entityId, 0, 0)
-                            );
-                        } catch (Throwable t) {
-                        }
-                    }
-                }
             }
             return;
         }
@@ -112,7 +95,10 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
         boolean recorded = WebDiscItem.isRecorded(disc);
         String url = WebDiscItem.getUrl(disc);
 
+        logger.info("[WebDisc] SC playDisc: webdisc detected storageUuid={} recorded={} webTicks={} urlPresent={}", storageUuid, recorded, webTicks, (url != null && !url.isEmpty()));
+
         if (!recorded || webTicks <= 0 || url == null || url.isEmpty()) {
+            logger.info("[WebDisc] SC playDisc: invalid webdisc meta -> treat as non-webdisc storageUuid={}", storageUuid);
             markNonWebDiscSafe(storageUuid);
             if (storageUuid != null) {
                 try {
@@ -124,11 +110,13 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
 
         Level playLevel = (entityPlaying != null) ? entityPlaying.level() : levelPlaying;
         if (!(playLevel instanceof ServerLevel serverLevel)) {
+            logger.info("[WebDisc] SC playDisc: not serverlevel yet storageUuid={}", storageUuid);
             markWebDiscSafe(storageUuid);
             return;
         }
 
         if (storageUuid == null) {
+            logger.info("[WebDisc] SC playDisc: storageUuid is null, cannot sync");
             return;
         }
 
@@ -139,7 +127,9 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
             NBTHelper.setLong(upgrade, "discFinishTime", discFinishTime);
             NBTHelper.setLong(upgrade, "discLength", webTicks);
             save();
+            logger.info("[WebDisc] SC playDisc: wrote NBT discFinishTime={} discLength={} storageUuid={}", discFinishTime, webTicks, storageUuid);
         } catch (Throwable t) {
+            logger.info("[WebDisc] SC playDisc: failed to write NBT storageUuid={} err={}", storageUuid, t.toString());
         }
 
         markWebDiscSafe(storageUuid);
@@ -148,10 +138,10 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
         if (rawPos == null && entityPlaying != null) {
             try {
                 rawPos = entityPlaying.blockPosition();
-            } catch (Throwable t) {
-            }
+            } catch (Throwable ignored) {}
         }
         if (rawPos == null) {
+            logger.info("[WebDisc] SC playDisc: rawPos null storageUuid={}", storageUuid);
             return;
         }
         final BlockPos sendPos = rawPos;
@@ -161,7 +151,9 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
                     PacketDistributor.TRACKING_CHUNK.with(() -> serverLevel.getChunkAt(sendPos)),
                     new WebdiscJukeboxTimerMessage(storageUuid, webTicks)
             );
+            logger.info("[WebDisc] SC playDisc: sent WebdiscJukeboxTimerMessage storageUuid={} ticks={}", storageUuid, webTicks);
         } catch (Throwable t) {
+            logger.info("[WebDisc] SC playDisc: failed send timer msg storageUuid={} err={}", storageUuid, t.toString());
         }
 
         int elapsedTicks;
@@ -186,7 +178,9 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
                     PacketDistributor.TRACKING_CHUNK.with(() -> serverLevel.getChunkAt(sendPos)),
                     new PlayWebDiscMessage(sendPos, url, storageUuid, entityId, elapsedTicks, webTicks)
             );
+            logger.info("[WebDisc] SC playDisc: sent PlayWebDiscMessage storageUuid={} elapsed={} len={} entityId={}", storageUuid, elapsedTicks, webTicks, (entityPlaying != null ? entityPlaying.getId() : -1));
         } catch (Throwable t) {
+            logger.info("[WebDisc] SC playDisc: failed send PlayWebDiscMessage storageUuid={} err={}", storageUuid, t.toString());
         }
 
         try {
@@ -201,7 +195,9 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase<Juke
                     now,
                     discFinishTime
             );
+            logger.info("[WebDisc] SC playDisc: registry.put storageUuid={} start={} finish={}", storageUuid, now, discFinishTime);
         } catch (Throwable t) {
+            logger.info("[WebDisc] SC playDisc: registry.put failed storageUuid={} err={}", storageUuid, t.toString());
         }
     }
 
