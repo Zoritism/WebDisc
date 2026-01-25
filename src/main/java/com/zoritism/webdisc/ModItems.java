@@ -17,6 +17,6 @@ public class ModItems {
                             new Item.Properties().stacksTo(1).rarity(Rarity.RARE),
                             0,
                             () -> com.zoritism.webdisc.WebDiscSounds.PLACEHOLDER_SOUND.get(),
-                            12000
+                            600
                     ));
 }
