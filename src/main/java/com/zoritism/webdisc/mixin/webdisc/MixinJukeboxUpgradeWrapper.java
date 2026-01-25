@@ -4,9 +4,8 @@ import com.zoritism.webdisc.WebDiscPlaybackRegistry;
 import com.zoritism.webdisc.item.WebDiscItem;
 import com.zoritism.webdisc.network.NetworkHandler;
 import com.zoritism.webdisc.network.message.PlayWebDiscMessage;
-import com.zoritism.webdisc.network.message.WebdiscJukeboxTimerMessage;
 import com.zoritism.webdisc.server.WebDiscJukeboxSyncRegistry;
-import com.zoritism.webdisc.server.WebDiscScFinishTimeOverride;
+import com.zoritism.webdisc.server.WebDiscScLengthOverride;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -50,7 +49,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
     @Nullable
     private BlockPos posPlaying;
 
-    // В decompile SophisticatedCore явно: "private final Runnable onFinishedCallback = this::onDiscFinished;"
     @Shadow
     private Runnable onFinishedCallback;
 
@@ -64,7 +62,7 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
         try {
             wrapper = (JukeboxUpgradeWrapper) (Object) this;
         } catch (Throwable t) {
-            logger.info("[WebDisc] SC playDisc: cast to wrapper failed err={}", t.toString());
+            logger.info("[WebDisc] SC playDisc: cast failed err={}", t.toString());
             return;
         }
 
@@ -72,27 +70,25 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
         try {
             disc = wrapper.getDisc();
         } catch (Throwable t) {
-            logger.info("[WebDisc] SC playDisc: wrapper.getDisc failed err={}", t.toString());
+            logger.info("[WebDisc] SC playDisc: getDisc failed err={}", t.toString());
             return;
         }
 
-        UUID storageUuid = null;
+        UUID storageUuid;
         try {
             storageUuid = storageWrapper.getContentsUuid().orElse(null);
         } catch (Throwable t) {
-            logger.info("[WebDisc] SC playDisc: storageWrapper.getContentsUuid threw err={}", t.toString());
+            logger.info("[WebDisc] SC playDisc: getContentsUuid failed err={}", t.toString());
+            return;
         }
 
         if (disc == null || disc.isEmpty()) {
-            logger.info("[WebDisc] SC playDisc: empty disc storageUuid={}", storageUuid);
-            markNonWebDiscSafe(null);
+            markNonWebDiscSafe(storageUuid);
             return;
         }
 
         if (!(disc.getItem() instanceof WebDiscItem)) {
-            logger.info("[WebDisc] SC playDisc: non-webdisc disc item={} storageUuid={}", disc.getItem().getClass().getName(), storageUuid);
             markNonWebDiscSafe(storageUuid);
-
             if (storageUuid != null) {
                 try {
                     WebDiscJukeboxSyncRegistry.remove(storageUuid);
@@ -101,15 +97,25 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
             return;
         }
 
-        int webTicks = WebDiscItem.getDurationTicks(disc);
-        boolean recorded = WebDiscItem.isRecorded(disc);
-        String url = WebDiscItem.getUrl(disc);
+        int webTicks;
+        boolean recorded;
+        String url;
+        try {
+            webTicks = WebDiscItem.getDurationTicks(disc);
+            recorded = WebDiscItem.isRecorded(disc);
+            url = WebDiscItem.getUrl(disc);
+        } catch (Throwable t) {
+            logger.info("[WebDisc] SC playDisc: webdisc meta read failed uuid={} err={}", storageUuid, t.toString());
+            markNonWebDiscSafe(storageUuid);
+            return;
+        }
 
-        logger.info("[WebDisc] SC playDisc: webdisc detected storageUuid={} recorded={} webTicks={} urlPresent={}",
-                storageUuid, recorded, webTicks, (url != null && !url.isEmpty()));
+        logger.info(
+                "[WebDisc] SC playDisc webdisc uuid={} recorded={} lenTicks={} urlPresent={}",
+                storageUuid, recorded, webTicks, url != null && !url.isEmpty()
+        );
 
-        if (!recorded || webTicks <= 0 || url == null || url.isEmpty()) {
-            logger.info("[WebDisc] SC playDisc: invalid webdisc meta -> treat as non-webdisc storageUuid={}", storageUuid);
+        if (storageUuid == null || !recorded || webTicks <= 0 || url == null || url.isEmpty()) {
             markNonWebDiscSafe(storageUuid);
             if (storageUuid != null) {
                 try {
@@ -121,33 +127,9 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
 
         Level playLevel = (entityPlaying != null) ? entityPlaying.level() : levelPlaying;
         if (!(playLevel instanceof ServerLevel serverLevel)) {
-            logger.info("[WebDisc] SC playDisc: not serverlevel yet storageUuid={}", storageUuid);
             markWebDiscSafe(storageUuid);
             return;
         }
-
-        if (storageUuid == null) {
-            logger.info("[WebDisc] SC playDisc: storageUuid is null, cannot sync");
-            return;
-        }
-
-        if (onFinishedCallback == null) {
-            logger.info("[WebDisc] SC playDisc: onFinishedCallback is null -> cannot register ServerStorageSoundHandler finish callback storageUuid={}", storageUuid);
-        }
-
-        long now = serverLevel.getGameTime();
-        long discFinishTime = now + webTicks;
-
-        try {
-            NBTHelper.setLong(upgrade, "discFinishTime", discFinishTime);
-            NBTHelper.setLong(upgrade, "discLength", webTicks);
-            save();
-            logger.info("[WebDisc] SC playDisc: wrote NBT discFinishTime={} discLength={} storageUuid={}", discFinishTime, webTicks, storageUuid);
-        } catch (Throwable t) {
-            logger.info("[WebDisc] SC playDisc: failed to write NBT storageUuid={} err={}", storageUuid, t.toString());
-        }
-
-        markWebDiscSafe(storageUuid);
 
         BlockPos rawPos = posPlaying;
         if (rawPos == null && entityPlaying != null) {
@@ -156,23 +138,30 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
             } catch (Throwable ignored) {}
         }
         if (rawPos == null) {
-            logger.info("[WebDisc] SC playDisc: rawPos null storageUuid={}", storageUuid);
+            logger.info("[WebDisc] SC playDisc: rawPos null uuid={}", storageUuid);
             return;
         }
-        final BlockPos sendPos = rawPos;
+        BlockPos sendPos = rawPos;
 
-        // (Вариант 2) Ключевое: регистрируем проигрывание у SophisticatedCore ServerStorageSoundHandler,
-        // чтобы он завёл SoundInfo и вызвал onFinishedCallback по времени.
-        //
-        // ВАЖНО: SophisticatedCore считает finishTime из RecordItem.length (m_43036_()),
-        // а у WebDiscItem в registry длина не равна webTicks (она статическая, у нас 12000).
-        // Поэтому мы кладём override "правильного" finishTime и применяем его mixin'ом в ServerStorageSoundHandler.
+        long now = serverLevel.getGameTime();
+        long discFinishTime = now + (long) webTicks;
+
+        // ВАЖНО: это чинит превью/оверлей SC (он читает эти поля с апгрейда)
         try {
-            WebDiscScFinishTimeOverride.put(storageUuid, discFinishTime);
+            NBTHelper.setLong(upgrade, "discFinishTime", discFinishTime);
+            NBTHelper.setLong(upgrade, "discLength", (long) webTicks);
+            save();
+            logger.info("[WebDisc] SC playDisc: override upgrade NBT discFinishTime={} discLength={} uuid={}", discFinishTime, webTicks, storageUuid);
+        } catch (Throwable t) {
+            logger.info("[WebDisc] SC playDisc: failed override upgrade NBT uuid={} err={}", storageUuid, t.toString());
+        }
+
+        markWebDiscSafe(storageUuid);
+
+        try {
+            WebDiscScLengthOverride.put(storageUuid, webTicks);
 
             if (entityPlaying != null) {
-                logger.info("[WebDisc] SC playDisc: registering ServerStorageSoundHandler (entity) storageUuid={} entityId={} pos={}",
-                        storageUuid, entityPlaying.getId(), entityPlaying.position());
                 ServerStorageSoundHandler.startPlayingDisc(
                         serverLevel,
                         entityPlaying.position(),
@@ -182,7 +171,6 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
                         onFinishedCallback
                 );
             } else {
-                logger.info("[WebDisc] SC playDisc: registering ServerStorageSoundHandler (block) storageUuid={} pos={}", storageUuid, sendPos);
                 ServerStorageSoundHandler.startPlayingDisc(
                         serverLevel,
                         sendPos,
@@ -191,49 +179,22 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
                         onFinishedCallback
                 );
             }
-            logger.info("[WebDisc] SC playDisc: ServerStorageSoundHandler registration done storageUuid={}", storageUuid);
         } catch (Throwable t) {
-            logger.info("[WebDisc] SC playDisc: ServerStorageSoundHandler.startPlayingDisc FAILED storageUuid={} err={}", storageUuid, t.toString());
+            logger.info("[WebDisc] SC playDisc: startPlayingDisc failed uuid={} err={}", storageUuid, t.toString());
             try {
-                WebDiscScFinishTimeOverride.clear(storageUuid);
+                WebDiscScLengthOverride.clear(storageUuid);
             } catch (Throwable ignored) {}
-        }
-
-        try {
-            NetworkHandler.CHANNEL.send(
-                    PacketDistributor.TRACKING_CHUNK.with(() -> serverLevel.getChunkAt(sendPos)),
-                    new WebdiscJukeboxTimerMessage(storageUuid, webTicks)
-            );
-            logger.info("[WebDisc] SC playDisc: sent WebdiscJukeboxTimerMessage storageUuid={} ticks={}", storageUuid, webTicks);
-        } catch (Throwable t) {
-            logger.info("[WebDisc] SC playDisc: failed send timer msg storageUuid={} err={}", storageUuid, t.toString());
-        }
-
-        int elapsedTicks;
-        try {
-            long discFinish = NBTHelper.getLong(upgrade, "discFinishTime").orElse(discFinishTime);
-            long discLengthLong = NBTHelper.getLong(upgrade, "discLength").orElse((long) webTicks);
-            if (discLengthLong <= 0L) discLengthLong = webTicks;
-
-            long discStart = discFinish - discLengthLong;
-            long rawElapsed = now - discStart;
-            if (rawElapsed < 0L) rawElapsed = 0L;
-            if (rawElapsed > discLengthLong) rawElapsed = discLengthLong;
-
-            elapsedTicks = (int) Math.max(0L, Math.min(Integer.MAX_VALUE, rawElapsed));
-        } catch (Throwable t) {
-            elapsedTicks = 0;
+            return;
         }
 
         try {
             int entityId = (entityPlaying != null) ? entityPlaying.getId() : -1;
             NetworkHandler.CHANNEL.send(
                     PacketDistributor.TRACKING_CHUNK.with(() -> serverLevel.getChunkAt(sendPos)),
-                    new PlayWebDiscMessage(sendPos, url, storageUuid, entityId, elapsedTicks, webTicks)
+                    new PlayWebDiscMessage(sendPos, url, storageUuid, entityId, 0, webTicks)
             );
-            logger.info("[WebDisc] SC playDisc: sent PlayWebDiscMessage storageUuid={} elapsed={} len={} entityId={}", storageUuid, elapsedTicks, webTicks, entityId);
         } catch (Throwable t) {
-            logger.info("[WebDisc] SC playDisc: failed send PlayWebDiscMessage storageUuid={} err={}", storageUuid, t.toString());
+            logger.info("[WebDisc] SC playDisc: send PlayWebDiscMessage failed uuid={} err={}", storageUuid, t.toString());
         }
 
         try {
@@ -248,9 +209,8 @@ public abstract class MixinJukeboxUpgradeWrapper extends UpgradeWrapperBase {
                     now,
                     discFinishTime
             );
-            logger.info("[WebDisc] SC playDisc: registry.put storageUuid={} start={} finish={}", storageUuid, now, discFinishTime);
         } catch (Throwable t) {
-            logger.info("[WebDisc] SC playDisc: registry.put failed storageUuid={} err={}", storageUuid, t.toString());
+            logger.info("[WebDisc] SC playDisc: registry.put failed uuid={} err={}", storageUuid, t.toString());
         }
     }
 
