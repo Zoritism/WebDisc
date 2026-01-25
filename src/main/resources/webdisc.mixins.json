@@ -6,7 +6,6 @@
   "refmap": "webdisc.refmap.json",
   "mixins": [
     "webdisc.MixinJukeboxBlockEntity",
-    "webdisc.MixinSoundFinishedNotificationMessage",
     "webdisc.MixinJukeboxUpgradeWrapper"
   ],
   "client": [

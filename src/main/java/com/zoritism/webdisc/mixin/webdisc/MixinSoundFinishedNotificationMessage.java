@@ -4,7 +4,6 @@ import com.zoritism.webdisc.WebDiscPlaybackRegistry;
 import com.zoritism.webdisc.client.WebDiscClientHandler;
 import com.zoritism.webdisc.server.WebDiscJukeboxSyncRegistry;
 import net.minecraft.server.level.ServerPlayer;
-import net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.SoundFinishedNotificationMessage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -13,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.lang.reflect.Field;
 import java.util.UUID;
 
-@Mixin(value = SoundFinishedNotificationMessage.class, remap = false)
+@Mixin(targets = "net.p3pp3rf1y.sophisticatedcore.upgrades.jukebox.SoundFinishedNotificationMessage", remap = false)
 public abstract class MixinSoundFinishedNotificationMessage {
 
     @Inject(
@@ -22,7 +21,7 @@ public abstract class MixinSoundFinishedNotificationMessage {
             cancellable = true
     )
     private static void webdisc$logAndFilter(ServerPlayer sender,
-                                             SoundFinishedNotificationMessage msg,
+                                             Object msg,
                                              CallbackInfo ci) {
         if (sender == null || msg == null) {
             return;
@@ -30,7 +29,7 @@ public abstract class MixinSoundFinishedNotificationMessage {
 
         UUID storageUuid = null;
         try {
-            Field f = SoundFinishedNotificationMessage.class.getDeclaredField("storageUuid");
+            Field f = msg.getClass().getDeclaredField("storageUuid");
             f.setAccessible(true);
             Object uuidObj = f.get(msg);
             if (uuidObj instanceof UUID u) {
@@ -41,11 +40,6 @@ public abstract class MixinSoundFinishedNotificationMessage {
         if (storageUuid == null) {
             return;
         }
-
-        try {
-            long gt = sender.level().getGameTime();
-            String dim = sender.level().dimension().location().toString();
-        } catch (Throwable ignored) {}
 
         boolean isWebDiscSlot = false;
         try {
